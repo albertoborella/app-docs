@@ -14,12 +14,12 @@ init:
   skill_resolution: paths-injected
 
 context: |
-  Project: app-docs — documentation-first repository; no application code exists yet.
+  Project: app-docs — SDD documentation scaffold plus the dairy-doc-manager application (Phase 1 foundation landed; Phases 2-8 pending).
   Domain: manage official regulatory-body documents and requirements for dairy-product companies.
   Stack: Python >= 3.10 — FastAPI + SQLModel + SQLite (WAL) + Flet; pinned in pyproject.toml.
-  Architecture: not chosen yet (pending requirements and design phases).
+  Architecture: decided in openspec/changes/dairy-doc-manager/design.md — one FastAPI process is the system of record on all three targets; web co-locates the Flet UI via flet.fastapi; desktop and mobile are native HTTP clients of the same API.
   Testing: pytest test runner and ruff linter available (details in testing: block below).
-  Conventions: user-authored docs/ scaffold is the source of truth; artifacts in English.
+  Conventions: user-authored docs/ scaffold is the source of truth; artifacts in English; application UI copy in Spanish (neutral).
 
 strict_tdd: false
 
@@ -72,11 +72,11 @@ rules:
       - Follow existing code patterns
       - Re-run detection and update `testing:` once a stack and test runner exist
     tdd: false
-    test_command: ""
+    test_command: "pytest"
   verify:
-    test_command: ""
+    test_command: "pytest"
     build_command: ""
     coverage_threshold: 0
-    note: No test runner detected; verification must rely on manual and documentation checks until one exists
+    note: pytest and ruff are available; verification runs the real test suite. Coverage tooling is not yet configured (coverage_threshold stays 0 until it is).
   archive:
     - Warn before merging destructive deltas
