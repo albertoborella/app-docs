@@ -36,7 +36,7 @@ Chain strategy: pending
 
 ## Phase 3: Documents CRUD & Soft Delete
 
-- [ ] 3.1 RED+GREEN `tests/test_documents_api.py` → `app/services/document_service.py`, `app/api/routes/documents.py` (list/filters/deleted, CRUD, restore): admin 201/200; user 403; deleted hidden for users, admin bin; restore; free-text issuing_body; LIKE search.
+- [x] 3.1 RED+GREEN `tests/test_documents_api.py` → `app/services/document_service.py`, `app/api/routes/documents.py` (list/filters/deleted, CRUD, restore): admin 201/200; user 403; deleted hidden for users, admin bin; restore; free-text issuing_body; LIKE search.
 
 ## Phase 4: File Storage
 

@@ -1,5 +1,7 @@
 """Shared API request/response schemas (PEP 604 only)."""
 
+from datetime import date, datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models import Role
@@ -35,3 +37,17 @@ class UserPatch(BaseModel):
     password: str | None = Field(default=None, min_length=1)
     role: Role | None = None
     is_active: bool | None = None
+
+
+class DocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    issuing_body: str
+    description: str | None
+    document_type: str | None
+    issued_on: date | None
+    deleted_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
