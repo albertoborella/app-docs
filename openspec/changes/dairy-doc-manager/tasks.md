@@ -31,8 +31,8 @@ Chain strategy: pending
 
 ## Phase 2: Auth & Users API
 
-- [ ] 2.1 RED+GREEN `tests/test_auth_api.py` → `app/services/auth_service.py`, `app/api/deps.py` (get_current_user, require_admin), `app/api/routes/auth.py`: mint token, 401s, logout deletes, deactivated rejected.
-- [ ] 2.2 RED+GREEN `tests/test_users_api.py` → `app/services/user_service.py`, `app/api/routes/users.py` (users list/create/patch): admin create/edit/deactivate/reactivate; user 403; two roles; no self-registration.
+- [x] 2.1 RED+GREEN `tests/test_auth_api.py` → `app/services/auth_service.py`, `app/api/deps.py` (get_current_user, require_admin), `app/api/routes/auth.py`: mint token, 401s, logout deletes, deactivated rejected.
+- [x] 2.2 RED+GREEN `tests/test_users_api.py` → `app/services/user_service.py`, `app/api/routes/users.py` (users list/create/patch): admin create/edit/deactivate/reactivate; user 403; two roles; no self-registration.
 
 ## Phase 3: Documents CRUD & Soft Delete
 
