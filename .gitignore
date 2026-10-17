@@ -1,0 +1,50 @@
+# ============================================================================
+# app-docs — .gitignore
+# Stack: Python 3.10+ · FastAPI · SQLModel · SQLite (WAL) · Flet · pytest · ruff
+# ============================================================================
+
+# ── Runtime data — NUNCA se versiona ────────────────────────────────────────
+# SQLite database and its WAL/SHM sidecars, plus uploaded document binaries.
+# Defaults live in app/core/config.py (DOCMANAGER_DB_PATH, DOCMANAGER_STORAGE_DIR).
+var/
+
+# Safety net in case the DB path is pointed somewhere outside var/.
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# ── Secrets ────────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ── Tooling caches ─────────────────────────────────────────────────────────
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# ── Build output (`flet build`, packaging) ─────────────────────────────────
+build/
+dist/
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+*.log
+
+# ── OS and editor state ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
