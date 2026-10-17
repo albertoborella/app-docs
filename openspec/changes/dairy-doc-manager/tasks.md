@@ -22,12 +22,12 @@ Chain strategy: pending
 
 ## Phase 1: Foundation
 
-- [ ] 1.1 `.gitignore`: var/, *.db, *.sqlite*, __pycache__/, *.pyc, .venv/.
-- [ ] 1.2 `pyproject.toml`: pin fastapi/uvicorn/sqlmodel/flet/flet-fastapi/httpx/bcrypt/pytest/ruff; Python>=3.10; `X | None` only.
-- [ ] 1.3 `app/core/config.py` (storage dir, 12h TTL); `app/db/session.py` (WAL, FK ON); `app/db/models.py`: Role, User, UserSession, Document (title/issuing_body/deleted_at indexed, partial), DocumentFile.
-- [ ] 1.4 RED+GREEN `tests/test_security.py` → `app/core/security.py`: bcrypt not passlib; 256-bit token, SHA-256 only; expired TTL rejected.
-- [ ] 1.5 RED `tests/test_cli_create_admin.py`: bcrypt admin on empty DB; refuses without --force; --password argv rejected; getpass patched.
-- [ ] 1.6 `app/cli.py` argparse+getpass create-admin (--username optional, password prompted, --force); Spanish operator error.
+- [x] 1.1 `.gitignore`: var/, *.db, *.sqlite*, __pycache__/, *.pyc, .venv/.
+- [x] 1.2 `pyproject.toml`: pin fastapi/uvicorn/sqlmodel/flet/flet-fastapi/httpx/bcrypt/pytest/ruff; Python>=3.10; `X | None` only.
+- [x] 1.3 `app/core/config.py` (storage dir, 12h TTL); `app/db/session.py` (WAL, FK ON); `app/db/models.py`: Role, User, UserSession, Document (title/issuing_body/deleted_at indexed, partial), DocumentFile.
+- [x] 1.4 RED+GREEN `tests/test_security.py` → `app/core/security.py`: bcrypt not passlib; 256-bit token, SHA-256 only; expired TTL rejected.
+- [x] 1.5 RED `tests/test_cli_create_admin.py`: bcrypt admin on empty DB; refuses without --force; --password argv rejected; getpass patched.
+- [x] 1.6 `app/cli.py` argparse+getpass create-admin (--username optional, password prompted, --force); Spanish operator error.
 
 ## Phase 2: Auth & Users API
 
