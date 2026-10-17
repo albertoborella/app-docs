@@ -1,8 +1,8 @@
-"""Integration tests for the documents API: catalog list/search/filter, soft-delete visibility."""
+"""Integration tests for the documents API: CRUD, search/filter, soft delete & restore."""
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session, SQLModel, select
 
 from app.core.config import get_settings
 from app.core.security import hash_password, utc_now
@@ -38,17 +38,12 @@ def create_user(username, password, role=Role.user):
         return user
 
 
-def create_document(title, issuing_body, *, deleted=False, **fields):
+def create_document(title, issuing_body, **fields):
     engine = create_db_engine(get_settings().db_path)
     with Session(engine) as session:
         now = utc_now()
         doc = Document(
-            title=title,
-            issuing_body=issuing_body,
-            deleted_at=utc_now() if deleted else None,
-            created_at=now,
-            updated_at=now,
-            **fields,
+            title=title, issuing_body=issuing_body, created_at=now, updated_at=now, **fields
         )
         session.add(doc)
         session.commit()
@@ -66,6 +61,12 @@ def bearer(token):
     return {"Authorization": f"Bearer {token}"}
 
 
+def document_count():
+    engine = create_db_engine(get_settings().db_path)
+    with Session(engine) as session:
+        return len(session.exec(select(Document)).all())
+
+
 @pytest.fixture
 def admin_token(client):
     create_user("admin", "adm1n-pass", role=Role.admin)
@@ -78,21 +79,81 @@ def user_token(client):
     return login_token(client, "ana", "usr-pass")
 
 
+def create_via_api(client, token, **payload):
+    return client.post("/api/v1/documents", headers=bearer(token), json=payload)
+
+
+# --- Authentication & role gates -------------------------------------------------
+
+
 def test_documents_list_requires_authentication(client):
     assert client.get("/api/v1/documents").status_code == 401
 
 
-def test_normal_user_sees_whole_active_catalog(client, user_token):
-    create_document("A", "SENASA")
-    create_document("B", "MVD")
+def test_admin_creates_document_with_201(client, admin_token):
+    response = create_via_api(
+        client,
+        admin_token,
+        title="Resolución 123",
+        issuing_body="SENASA",
+        description="Lácteos",
+        document_type="resolución",
+        issued_on="2024-05-01",
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["title"] == "Resolución 123"
+    assert body["issuing_body"] == "SENASA"
+    assert body["description"] == "Lácteos"
+    assert body["document_type"] == "resolución"
+    assert body["issued_on"] == "2024-05-01"
+    assert body["deleted_at"] is None
+
+
+def test_arbitrary_free_text_issuing_body_is_stored_verbatim(client, admin_token):
+    response = create_via_api(
+        client, admin_token, title="Doc", issuing_body="Ministerio de Ganadería (MVD) — Región Este"
+    )
+    assert response.status_code == 201
+    assert response.json()["issuing_body"] == "Ministerio de Ganadería (MVD) — Región Este"
+
+
+def test_normal_user_cannot_create_document(client, user_token):
+    before = document_count()
+    response = create_via_api(client, user_token, title="Intruso", issuing_body="SENASA")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Se requiere rol de administrador."
+    assert document_count() == before
+
+
+def test_normal_user_cannot_update_document(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="Original", issuing_body="SENASA")
+    response = client.patch(
+        "/api/v1/documents/1", headers=bearer(user_token), json={"title": "Hack"}
+    )
+    assert response.status_code == 403
+
+
+def test_normal_user_cannot_delete_document(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="Original", issuing_body="SENASA")
+    response = client.delete("/api/v1/documents/1", headers=bearer(user_token))
+    assert response.status_code == 403
+
+
+# --- Catalog listing, search, filters --------------------------------------------
+
+
+def test_normal_user_sees_whole_active_catalog(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
+    create_via_api(client, admin_token, title="B", issuing_body="MVD")
     response = client.get("/api/v1/documents", headers=bearer(user_token))
     assert response.status_code == 200
     assert {item["title"] for item in response.json()} == {"A", "B"}
 
 
-def test_query_search_matches_title_and_issuing_body(client, user_token):
-    create_document("Resolución 123", "SENASA")
-    create_document("Decreto 9", "MVD")
+def test_query_search_matches_title_and_issuing_body(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="Resolución 123", issuing_body="SENASA")
+    create_via_api(client, admin_token, title="Decreto 9", issuing_body="MVD")
     response = client.get(
         "/api/v1/documents", headers=bearer(user_token), params={"query": "resoluci"}
     )
@@ -102,16 +163,18 @@ def test_query_search_matches_title_and_issuing_body(client, user_token):
     assert [item["issuing_body"] for item in response.json()] == ["MVD"]
 
 
-def test_no_match_search_returns_empty_without_error(client, user_token):
-    create_document("A", "SENASA")
+def test_no_match_search_returns_empty_without_error(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
     response = client.get("/api/v1/documents", headers=bearer(user_token), params={"query": "zzz"})
     assert response.status_code == 200
     assert response.json() == []
 
 
-def test_filter_by_document_type(client, user_token):
-    create_document("R", "SENASA", document_type="resolución")
-    create_document("D", "SENASA", document_type="decreto")
+def test_filter_by_document_type(client, admin_token, user_token):
+    create_via_api(
+        client, admin_token, title="R", issuing_body="SENASA", document_type="resolución"
+    )
+    create_via_api(client, admin_token, title="D", issuing_body="SENASA", document_type="decreto")
     response = client.get(
         "/api/v1/documents", headers=bearer(user_token), params={"document_type": "decreto"}
     )
@@ -119,9 +182,9 @@ def test_filter_by_document_type(client, user_token):
     assert [item["title"] for item in response.json()] == ["D"]
 
 
-def test_filter_by_issuing_body(client, user_token):
-    create_document("R", "SENASA")
-    create_document("D", "MVD")
+def test_filter_by_issuing_body(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="R", issuing_body="SENASA")
+    create_via_api(client, admin_token, title="D", issuing_body="MVD")
     response = client.get(
         "/api/v1/documents", headers=bearer(user_token), params={"issuing_body": "MVD"}
     )
@@ -129,9 +192,24 @@ def test_filter_by_issuing_body(client, user_token):
     assert [item["title"] for item in response.json()] == ["D"]
 
 
-def test_deleted_hidden_from_normal_users_in_list_and_search(client, user_token):
-    create_document("Activo", "SENASA")
-    create_document("Obsoleto", "SENASA", deleted=True)
+# --- Soft delete, admin bin, restore ---------------------------------------------
+
+
+def test_admin_delete_soft_deletes_and_record_remains(client, admin_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
+    response = client.delete("/api/v1/documents/1", headers=bearer(admin_token))
+    assert response.status_code == 204
+    assert document_count() == 1  # soft delete: row stays
+    engine = create_db_engine(get_settings().db_path)
+    with Session(engine) as session:
+        doc = session.exec(select(Document).where(Document.id == 1)).one()
+        assert doc.deleted_at is not None
+
+
+def test_deleted_hidden_from_normal_users_in_list_and_search(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="Activo", issuing_body="SENASA")
+    create_via_api(client, admin_token, title="Obsoleto", issuing_body="SENASA")
+    client.delete("/api/v1/documents/2", headers=bearer(admin_token))
     response = client.get("/api/v1/documents", headers=bearer(user_token))
     assert [item["title"] for item in response.json()] == ["Activo"]
     response = client.get(
@@ -141,8 +219,9 @@ def test_deleted_hidden_from_normal_users_in_list_and_search(client, user_token)
 
 
 def test_admin_bin_lists_only_deleted(client, admin_token, user_token):
-    create_document("Activo", "SENASA")
-    create_document("Obsoleto", "SENASA", deleted=True)
+    create_via_api(client, admin_token, title="Activo", issuing_body="SENASA")
+    create_via_api(client, admin_token, title="Obsoleto", issuing_body="SENASA")
+    client.delete("/api/v1/documents/2", headers=bearer(admin_token))
     response = client.get(
         "/api/v1/documents", headers=bearer(admin_token), params={"deleted": "true"}
     )
@@ -151,11 +230,60 @@ def test_admin_bin_lists_only_deleted(client, admin_token, user_token):
     assert response.json()[0]["deleted_at"] is not None
 
 
-def test_normal_user_deleted_flag_is_ignored(client, user_token):
-    create_document("Activo", "SENASA")
-    create_document("Obsoleto", "SENASA", deleted=True)
+def test_normal_user_deleted_flag_is_ignored(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="Activo", issuing_body="SENASA")
+    create_via_api(client, admin_token, title="Obsoleto", issuing_body="SENASA")
+    client.delete("/api/v1/documents/2", headers=bearer(admin_token))
     response = client.get(
         "/api/v1/documents", headers=bearer(user_token), params={"deleted": "true"}
     )
     assert response.status_code == 200
     assert [item["title"] for item in response.json()] == ["Activo"]  # bin never exposed
+
+
+def test_admin_restores_document_and_it_reappears(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
+    client.delete("/api/v1/documents/1", headers=bearer(admin_token))
+    response = client.post("/api/v1/documents/1/restore", headers=bearer(admin_token))
+    assert response.status_code == 200
+    assert response.json()["deleted_at"] is None
+    response = client.get("/api/v1/documents", headers=bearer(user_token))
+    assert [item["title"] for item in response.json()] == ["A"]
+
+
+def test_normal_user_cannot_restore(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
+    client.delete("/api/v1/documents/1", headers=bearer(admin_token))
+    response = client.post("/api/v1/documents/1/restore", headers=bearer(user_token))
+    assert response.status_code == 403
+
+
+# --- Admin updates & 404s ---------------------------------------------------------
+
+
+def test_admin_updates_document_fields(client, admin_token):
+    create_via_api(client, admin_token, title="Original", issuing_body="SENASA")
+    response = client.patch(
+        "/api/v1/documents/1", headers=bearer(admin_token), json={"title": "Actualizado"}
+    )
+    assert response.status_code == 200
+    assert response.json()["title"] == "Actualizado"
+    assert response.json()["issuing_body"] == "SENASA"
+
+
+def test_patch_unknown_document_returns_404(client, admin_token):
+    response = client.patch(
+        "/api/v1/documents/999", headers=bearer(admin_token), json={"title": "X"}
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Documento no encontrado."
+
+
+def test_delete_unknown_document_returns_404(client, admin_token):
+    response = client.delete("/api/v1/documents/999", headers=bearer(admin_token))
+    assert response.status_code == 404
+
+
+def test_restore_unknown_document_returns_404(client, admin_token):
+    response = client.post("/api/v1/documents/999/restore", headers=bearer(admin_token))
+    assert response.status_code == 404

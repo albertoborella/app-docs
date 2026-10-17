@@ -1,7 +1,10 @@
 """Document catalog domain rules: list/search/filter, admin CRUD, soft delete, restore."""
 
+from datetime import date
+
 from sqlmodel import Session, select
 
+from app.core.security import utc_now
 from app.db.models import Document
 
 
@@ -27,3 +30,61 @@ def list_documents(
     if issuing_body is not None:
         stmt = stmt.where(Document.issuing_body == issuing_body)
     return list(db.exec(stmt.order_by(Document.id)).all())
+
+
+def get_document(db: Session, document_id: int) -> Document | None:
+    return db.get(Document, document_id)
+
+
+def create_document(
+    db: Session,
+    *,
+    title: str,
+    issuing_body: str,
+    description: str | None = None,
+    document_type: str | None = None,
+    issued_on: date | None = None,
+) -> Document:
+    now = utc_now()
+    document = Document(
+        title=title,
+        issuing_body=issuing_body,
+        description=description,
+        document_type=document_type,
+        issued_on=issued_on,
+        deleted_at=None,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+def update_document(db: Session, document: Document, **updates: object) -> Document:
+    for field, value in updates.items():
+        setattr(document, field, value)
+    document.updated_at = utc_now()
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+def soft_delete_document(db: Session, document: Document) -> Document:
+    document.deleted_at = utc_now()
+    document.updated_at = utc_now()
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+def restore_document(db: Session, document: Document) -> Document:
+    document.deleted_at = None
+    document.updated_at = utc_now()
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document

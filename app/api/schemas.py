@@ -39,6 +39,22 @@ class UserPatch(BaseModel):
     is_active: bool | None = None
 
 
+class DocumentCreate(BaseModel):
+    title: str = Field(min_length=1)
+    issuing_body: str = Field(min_length=1)
+    description: str | None = None
+    document_type: str | None = None
+    issued_on: date | None = None
+
+
+class DocumentPatch(BaseModel):
+    title: str | None = Field(default=None, min_length=1)
+    issuing_body: str | None = Field(default=None, min_length=1)
+    description: str | None = None
+    document_type: str | None = None
+    issued_on: date | None = None
+
+
 class DocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
