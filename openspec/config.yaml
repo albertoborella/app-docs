@@ -1,0 +1,82 @@
+# openspec/config.yaml — SDD configuration for app-docs
+# Created by sdd-init on 2026-10-16. Do not delete; later phases read this file.
+
+schema: spec-driven
+
+init:
+  project: app-docs
+  initialized: "2026-10-16"
+  status: success
+  artifact_store: both # openspec/ files + Engram (equivalent to `hybrid` in the persistence contract)
+  execution_mode: interactive
+  delivery_strategy: ask-on-risk
+  review_budget_lines: 400
+  skill_resolution: paths-injected
+
+context: |
+  Project: app-docs — documentation-first repository; no application code exists yet.
+  Domain: manage official regulatory-body documents and requirements for dairy-product companies.
+  Stack: not detected — no package manifest, source tree, build, or CI config present.
+  Architecture: not chosen yet (pending requirements and design phases).
+  Testing: no test runner, linter, type checker, or formatter detected.
+  Conventions: user-authored docs/ scaffold is the source of truth; artifacts in English.
+
+strict_tdd: false
+
+testing:
+  strict_tdd: false
+  detected: "2026-10-16"
+  reason: No test runner or build system detected in the repository.
+  test_runner:
+    command: null
+    framework: none detected
+  test_layers:
+    unit:
+      available: false
+      tool: null
+    integration:
+      available: false
+      tool: null
+    e2e:
+      available: false
+      tool: null
+  coverage:
+    available: false
+    command: null
+  quality_tools:
+    linter:
+      available: false
+      command: null
+    type_checker:
+      available: false
+      command: null
+    formatter:
+      available: false
+      command: null
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Requirements are not gathered yet; proposals MUST NOT invent requirements
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns
+      - Re-run detection and update `testing:` once a stack and test runner exist
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+    note: No test runner detected; verification must rely on manual and documentation checks until one exists
+  archive:
+    - Warn before merging destructive deltas
