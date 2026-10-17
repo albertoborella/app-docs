@@ -23,7 +23,7 @@ Greenfield (no application code exists) — this design establishes the project'
 
 **Choice**: login mints a random 256-bit token; only its SHA-256 lands in `user_sessions`. Every request carries `Authorization: Bearer`. FastAPI deps `get_current_user` (token → session → user; rejects expired token, dead session, `is_active=False`) and `require_admin`. Logout deletes the session row; deactivation kills sign-in AND in-flight sessions on next request.
 **Alternatives considered**: JWT (rejected — revocation needs a DB check anyway at this scale; extra crypto/config surface); cookie sessions (rejected — native desktop/mobile have no browser cookie jar).
-**Rationale**: trivial revocation in SQLite; no self-service flows justify stateless tokens. `ASSUMED — requires user confirmation`: bcrypt via maintained `bcrypt` lib (not passlib), 12h TTL. Wrong? Both are isolated to `core/security.py`.
+**Rationale**: trivial revocation in SQLite; no self-service flows justify stateless tokens. `CONFIRMED` (user): bcrypt via maintained `bcrypt` lib (not passlib), 12h TTL. Both are isolated to `core/security.py`.
 
 ### Decision: One API Client Path for All Targets
 
@@ -38,7 +38,7 @@ $DOCMANAGER_STORAGE_DIR/            # default ./var/storage, gitignored
   documents/{document_id}/file      # single current binary per document (v1)
 ```
 
-`document_files` stores original_filename, content_type, size_bytes, sha256, stored_path. **Server generates all paths — client filenames never touch the filesystem** (traversal-safe). Upload = admin-only PUT multipart; extension + content-type allowlist (PDF, DOCX, XLSX, ODT, PNG, JPG) and size cap 25 MB — `ASSUMED — requires user confirmation`. Replacement overwrites in place; no file versioning in v1. Downloads stream via GET; soft-deleted docs refuse non-admins; admin recycle bin may fetch.
+`document_files` stores original_filename, content_type, size_bytes, sha256, stored_path. **Server generates all paths — client filenames never touch the filesystem** (traversal-safe). Upload = admin-only PUT multipart; extension + content-type allowlist (PDF, DOCX, XLSX, ODT, PNG, JPG) and size cap 25 MB — `CONFIRMED` (user). Replacement overwrites in place; no file versioning in v1. Downloads stream via GET; soft-deleted docs refuse non-admins; admin recycle bin may fetch.
 **Alternatives considered**: blobs in SQLite (bloats DB, breaks streaming); S3 (deployment target unknown — overkill).
 **Rationale**: simplest operable store for hundreds of files; swappable behind `file_service`.
 
@@ -48,7 +48,7 @@ $DOCMANAGER_STORAGE_DIR/            # default ./var/storage, gitignored
 
 ### Decision: Multi-Admin Allowed
 
-Two-role model admits N admin accounts; account UI can create admins. `ASSUMED — requires user confirmation`: if exactly-one-admin is required later, add a guard/partial unique index — additive change.
+Two-role model admits N admin accounts; account UI can create admins. `CONFIRMED` (user): multi-admin allowed. If exactly-one-admin is required later, add a guard/partial unique index — additive change.
 
 ### Decision: First-Admin Bootstrap via CLI Command
 
@@ -104,11 +104,11 @@ class UserSession(SQLModel, table=True):
 class Document(SQLModel, table=True):
     __tablename__ = "documents"
     id: int = Field(primary_key=True)
-    title: str = Field(index=True)                 # ASSUMED (buildability)
+    title: str = Field(index=True)                 # CONFIRMED (user)
     issuing_body: str = Field(index=True)          # CONFIRMED, free text
-    description: str | None = None                 # ASSUMED
-    document_type: str | None = None               # ASSUMED; free text — enum catalogs forbidden
-    issued_on: date | None = None                  # ASSUMED
+    description: str | None = None                 # CONFIRMED (user)
+    document_type: str | None = None               # CONFIRMED (user); free text — enum catalogs forbidden
+    issued_on: date | None = None                  # CONFIRMED (user)
     deleted_at: datetime | None = Field(default=None, index=True)
     created_at: datetime
     updated_at: datetime
@@ -125,7 +125,7 @@ class DocumentFile(SQLModel, table=True):
     uploaded_at: datetime
 ```
 
-Extra index: partial `(deleted_at) WHERE deleted_at IS NULL`. Search = SQL `LIKE` over indexed metadata columns; recorded performance review decides; FTS5-over-metadata is the documented upgrade path if the (TBD) latency target fails. `ASSUMED — requires user confirmation`: the four non-confirmed fields and search/filter dimensions.
+Extra index: partial `(deleted_at) WHERE deleted_at IS NULL`. Search = SQL `LIKE` over indexed metadata columns; recorded performance review decides; FTS5-over-metadata is the documented upgrade path if the (TBD) latency target fails. `CONFIRMED` (user): the four document fields above and the search/filter dimensions (free-text `query` over indexed metadata; filter by `document_type`, `issuing_body`, and the admin-only `deleted` flag).
 
 ## API Surface (`/api/v1`)
 
@@ -293,6 +293,9 @@ Greenfield — no data migration. `create_all` on first boot; the operator then 
 ## Open Questions
 
 - [ ] Deployment target and operator — the only remaining P0; decides HTTPS, hosting, mobile URL distribution.
-- [ ] Confirm assumed document fields (title, description, document_type, issued_on), search/filter dimensions, performance latency target.
-- [ ] Confirm formats/size cap, storage location, multi-admin, bcrypt + 12h TTL.
+- [ ] Search latency target — threshold that the phase-8 performance review must meet or escalate; without it the review has no pass/fail.
 - [ ] Exact Flet symbols for web download and FilePicker temp handling — verified in the pinned-version spike (this design assumes behavior, not symbol names).
+
+## Confirmation Record
+
+On user review the following design assumptions were confirmed and are no longer open: the four document fields (`title`, `description`, `document_type`, `issued_on`); the search/filter dimensions; the upload allowlist (PDF, DOCX, XLSX, ODT, PNG, JPG) and the 25 MB size cap; server-side opaque sessions with bcrypt via the `bcrypt` library and a 12 h TTL; multi-admin accounts allowed. Deployment target/operator and the search latency target remain open.
