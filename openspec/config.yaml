@@ -16,24 +16,24 @@ init:
 context: |
   Project: app-docs — documentation-first repository; no application code exists yet.
   Domain: manage official regulatory-body documents and requirements for dairy-product companies.
-  Stack: not detected — no package manifest, source tree, build, or CI config present.
+  Stack: Python >= 3.10 — FastAPI + SQLModel + SQLite (WAL) + Flet; pinned in pyproject.toml.
   Architecture: not chosen yet (pending requirements and design phases).
-  Testing: no test runner, linter, type checker, or formatter detected.
+  Testing: pytest test runner and ruff linter available (details in testing: block below).
   Conventions: user-authored docs/ scaffold is the source of truth; artifacts in English.
 
 strict_tdd: false
 
 testing:
   strict_tdd: false
-  detected: "2026-10-16"
-  reason: No test runner or build system detected in the repository.
+  detected: "2026-10-17"
+  reason: pytest and ruff installed via pyproject.toml (Python >= 3.10, FastAPI/SQLModel/Flet stack).
   test_runner:
-    command: null
-    framework: none detected
+    command: "pytest"
+    framework: pytest
   test_layers:
     unit:
-      available: false
-      tool: null
+      available: true
+      tool: pytest
     integration:
       available: false
       tool: null
@@ -45,14 +45,14 @@ testing:
     command: null
   quality_tools:
     linter:
-      available: false
-      command: null
+      available: true
+      command: "ruff check ."
     type_checker:
       available: false
       command: null
     formatter:
-      available: false
-      command: null
+      available: true
+      command: "ruff format --check"
 
 rules:
   proposal:
