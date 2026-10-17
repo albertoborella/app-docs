@@ -15,6 +15,6 @@ sistema visual.
 
 ## Consejos
 
-- Documentá los estados vacíos y de error: son los que más se olvidan.
-- Si cambiás un componente, actualizá su documentación en el mismo cambio.
+- Documenta los estados vacíos y de error: son los que más se olvidan.
+- Si cambias un componente, actualiza su documentación en el mismo cambio.
 

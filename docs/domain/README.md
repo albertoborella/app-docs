@@ -15,5 +15,5 @@ información que representa cada una.
 ## Consejos
 
 - El modelo de dominio debe entenderse sin leer código.
-- Cuando cambia una entidad, actualizá el dominio ANTES del schema.
+- Cuando cambia una entidad, actualiza el dominio ANTES del schema.
 

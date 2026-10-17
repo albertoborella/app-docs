@@ -15,7 +15,7 @@ usará, cuáles son los objetivos y cuál es el alcance inicial.
 
 ## Consejos
 
-- Empezá por `vision.md`: si no podés explicar el problema en una página,
+- Empieza por `vision.md`: si no puedes explicar el problema en una página,
   todavía no estás listo para codear.
-- El alcance es dinámico: actualizalo cuando el proyecto crezca o cambie.
+- El alcance es dinámico: actualízalo cuando el proyecto crezca o cambie.
 
