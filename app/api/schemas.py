@@ -67,3 +67,15 @@ class DocumentOut(BaseModel):
     deleted_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class FileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    document_id: int
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+    uploaded_at: datetime
