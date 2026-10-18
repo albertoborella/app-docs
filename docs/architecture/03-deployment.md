@@ -30,6 +30,8 @@ Los ajustes de sesión (TTL) viven en `app/core/config.py`.
 
 Mientras no exista ningún administrador, la API responde 401 y la interfaz muestra un mensaje en español que remite al operador al comando — no es un fallo (ADR-007).
 
+Para desarrollo local en tu máquina (uv, `--reload`, Swagger, curl), ver `05-development-guide.md`.
+
 ## Evolución del esquema
 
 Greenfield sin migración de datos. En v1, cambios de esquema por `ALTER` aditivos de SQLite; Alembic solo cuando un cambio rompiente lo justifique (NFR-13).
