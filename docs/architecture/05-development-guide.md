@@ -1,6 +1,6 @@
-# Guía de desarrollo local: arrancar el backend y probar endpoints
+# Guía de desarrollo local: backend, frontend y prueba de endpoints
 
-Cómo levantar el backend en tu máquina, crear el primer administrador y probar los endpoints con Swagger o curl. Para la estrategia de despliegue por objetivo, ver `03-deployment.md`.
+Cómo levantar el backend y la UI de Flet en tu máquina, crear el primer administrador, probar los endpoints con Swagger o curl, y ajustar la interfaz (tema, colores). Para la estrategia de despliegue por objetivo, ver `03-deployment.md`.
 
 ## Camino rápido
 
@@ -119,6 +119,68 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/users \
 
 La superficie completa (edición de usuarios, borrado suave, restauración) y los códigos de error están en `01-api-design.md`.
 
+## Frontend (Flet): correr y ajustar la UI
+
+El frontend es una app Flet 1.0.4 (desktop o browser) que consume la API con el mismo `ApiClient` en todos los objetivos. Para probarla hace falta **dos terminales**: el backend y la UI.
+
+### Camino rápido
+
+1. Terminal 1 — backend: `uv run uvicorn app.main:app --reload`
+2. Terminal 2 — frontend (desde la raíz del proyecto): `uv run flet run -r app/ui`
+3. Se abre la ventana de escritorio (o una pestaña del browser con `--web`, ver abajo) en la pantalla de inicio de sesión. Usá el administrador creado con `create-admin`.
+
+`DOCMANAGER_API_URL` no hace falta definirla en local: el `ApiClient` ya apunta por defecto a `http://127.0.0.1:8000`.
+
+### Modos de ejecución
+
+| Comando | Qué hace |
+| --- | --- |
+| `uv run flet run -r app/ui` | Escritorio, con *hot reload* recursivo (recompila al guardar cambios en `app/ui/` y subdirectorios) |
+| `uv run flet run -r --web app/ui` | Sirve la misma app en el browser (abre una pestaña sola); útil si no querés ventana nativa |
+| `uv run flet run -r -n app/ui` | Escritorio con la ventana arrancando oculta (`-n` / `--hidden`) |
+
+El flag `-r` (`--recursive`) es importante: las vistas viven en `app/ui/views/`, y sin `-r` el watcher no las observa.
+
+### Gotchas verificados (Flet 1.0.4)
+
+- **`uv sync` puede remover `flet-cli`** del venv (no está en `pyproject.toml`). No rompas la cabeza: el siguiente `uv run flet ...` lo reinstala solo. Siempre usá `uv run flet ...`, nunca `flet ...` a secas.
+- Flet 1.0 eliminó `ft.app`: el entry point (`app/ui/main.py`) usa `ft.run(main)`.
+- El `SnackBar` pasa por `page.show_dialog(ft.SnackBar(...))`, no `page.open` (pre-1.0).
+- El 401 de login no distingue contraseña incorrecta de instalación sin administrador: el hint de `create-admin` aparece ante cualquier error de autenticación.
+
+### Ajustar colores y tema
+
+Los puntos de customización, de global a puntual:
+
+1. **Tema general** — `app/ui/main.py`, función `main()`: hoy está `page.theme_mode = ft.ThemeMode.SYSTEM` (sigue el sistema). Cambialo a `ft.ThemeMode.LIGHT` o `ft.ThemeMode.DARK` para forzar.
+2. **Paleta de la app** — en la misma función, agregá un esquema de color Material 3 sobre la página:
+
+   ```python
+   page.theme = ft.Theme(
+       color_scheme=ft.ColorScheme(
+           primary=ft.Colors.INDIGO,        # color de acción principal (botones)
+           secondary=ft.Colors.TEAL,        # color secundario
+           error=ft.Colors.RED,             # errores
+           surface=ft.Colors.WHITE,         # fondo de superficies
+           on_primary=ft.Colors.WHITE,      # texto sobre el primary
+       ),
+   )
+   ```
+
+   Los campos aceptados de `ft.ColorScheme` (verificados contra el paquete instalado) incluyen `primary`, `on_primary`, `secondary`, `error`, `surface`, `on_surface`, `outline`, y todo el resto de la paleta MD3. Los valores son los de `ft.Colors.*` (`INDIGO`, `TEAL`, `RED`, `ORANGE`, `GREEN`, `AMBER`, `DEEP_PURPLE`, …) o strings hexadecimales.
+3. **Colores puntuales por control** — las vistas usan `ft.Colors.ERROR`, `ft.Colors.ON_SURFACE_VARIANT`, etc. directamente sobre `ft.Text` (por ejemplo el texto de error en `app/ui/views/sign_in.py`). Para un color custom en un control puntual: `ft.Text("...", color="#1976D2")` o `ft.Colors.with_opacity(0.7, ft.Colors.BLACK)`.
+4. **Tipografía y spacing** — los `size=`, `spacing=`, `padding=` de cada view están en `app/ui/views/sign_in.py` y `app/ui/views/catalog.py`.
+
+Con el *hot reload* activo, guardás el archivo y la ventana refleja el cambio sin reiniciar la sesión de la API (la sesión se pierde solo si se reinicia el proceso Python de la UI — el token vive en memoria del `ApiClient`).
+
+### Flujo completo de prueba (UI + backend real)
+
+1. Backend arriba (terminal 1).
+2. `uv run flet run -r app/ui` (terminal 2).
+3. Login con el administrador → catálogo (vacío al principio).
+4. Subí un documento con su PDF desde Swagger o curl (sección anterior) y refrescá el catálogo para verlo.
+5. Probá búsqueda, filtros y descarga desde la UI.
+
 ## Checklist
 
 - [ ] `uv sync` terminó sin errores
@@ -126,9 +188,12 @@ La superficie completa (edición de usuarios, borrado suave, restauración) y lo
 - [ ] uvicorn responde en http://127.0.0.1:8000/docs
 - [ ] `POST /auth/login` devuelve un token
 - [ ] `GET /auth/me` con `Authorization: Bearer $TOKEN` devuelve el usuario
+- [ ] `uv run flet run -r app/ui` abre la pantalla de inicio de sesión
+- [ ] Login con el administrador llega al catálogo
 
 ## Documentos relacionados
 
 - `01-api-design.md` — contratos HTTP y códigos de error.
 - `03-deployment.md` — estrategia de despliegue por objetivo.
+- `../ui/00-ui-overview.md` — visión general de la UI.
 - `../decisions/ADR-007-primer-admin-cli.md` — por qué el bootstrap es un CLI.

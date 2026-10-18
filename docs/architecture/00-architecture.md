@@ -69,4 +69,4 @@ Un solo proceso Python: la API REST es la fuente de verdad en todos los objetivo
 - `02-security.md` — modelo de seguridad.
 - `03-deployment.md` — despliegue por objetivo y arranque.
 - `04-decisions.md` — índice de ADR.
-- `05-development-guide.md` — arranque local, CLI del administrador y prueba de endpoints.
+- `05-development-guide.md` — arranque local (backend + frontend Flet), CLI del administrador, prueba de endpoints y ajuste de tema.

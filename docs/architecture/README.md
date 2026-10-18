@@ -13,7 +13,7 @@ comunicación entre servicios, seguridad y despliegue.
 | `02-security.md` | Modelo de seguridad: autenticación, autorización, datos. |
 | `03-deployment.md` | Estrategia de despliegue: ambientes, contenedores, CI/CD. |
 | `04-decisions.md` | Índice de decisiones técnicas del proyecto. |
-| `05-development-guide.md` | Guía práctica: arrancar el backend en local, crear el administrador, probar endpoints. |
+| `05-development-guide.md` | Guía práctica: arrancar backend y frontend (Flet) en local, crear el administrador, probar endpoints, ajustar tema/colores. |
 
 ## Consejos
 
