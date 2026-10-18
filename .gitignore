@@ -28,6 +28,9 @@ __pycache__/
 venv/
 env/
 
+# Repo convention: exact pins live in pyproject.toml; the uv lock file is not versioned.
+uv.lock
+
 # ── Tooling caches ─────────────────────────────────────────────────────────
 .pytest_cache/
 .ruff_cache/
