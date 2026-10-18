@@ -40,8 +40,8 @@ Chain strategy: pending
 
 ## Phase 4: File Storage
 
-- [ ] 4.1 RED `tests/test_files_api.py`: admin PUT stores binary+sha256/size; user 403; 415; 413; GET authed; anon 401; deleted 404 user/200 admin; no path escape.
-- [ ] 4.2 `app/services/file_service.py` (allowlist PDF/DOCX/XLSX/ODT/PNG/JPG, 25 MB, path documents/{id}/file) + `app/api/routes/files.py` (PUT/GET); 4.1 green.
+- [x] 4.1 RED `tests/test_files_api.py`: admin PUT stores binary+sha256/size; user 403; 415; 413; GET authed; anon 401; deleted 404 user/200 admin; no path escape.
+- [x] 4.2 `app/services/file_service.py` (allowlist PDF/DOCX/XLSX/ODT/PNG/JPG, 25 MB, path documents/{id}/file) + `app/api/routes/files.py` (PUT/GET); 4.1 green.
 
 ## Phase 5: Flet UI + API Client
 
