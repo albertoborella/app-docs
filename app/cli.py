@@ -6,6 +6,7 @@ from sqlmodel import Session, SQLModel, select
 
 from app.core.config import get_settings
 from app.core.security import hash_password, utc_now
+from app.db.migrations import ensure_document_columns
 from app.db.models import Role, User
 from app.db.session import create_db_engine
 
@@ -17,6 +18,7 @@ class AdminAlreadyExistsError(RuntimeError):
 def create_admin(*, username: str, password: str, force: bool = False) -> User:
     engine = create_db_engine(get_settings().db_path)
     SQLModel.metadata.create_all(engine)
+    ensure_document_columns(engine)
     with Session(engine) as session:
         existing = session.exec(select(User).where(User.role == Role.admin)).first()
         if existing is not None and not force:

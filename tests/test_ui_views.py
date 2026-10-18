@@ -23,6 +23,8 @@ def make_document(
     title: str = "Resolución 001",
     issuing_body: str = "MAGAP",
     document_type: str | None = "Resolución",
+    country: str | None = None,
+    topic: str | None = None,
 ) -> DocumentOut:
     return DocumentOut(
         id=document_id,
@@ -30,6 +32,8 @@ def make_document(
         issuing_body=issuing_body,
         description=None,
         document_type=document_type,
+        country=country,
+        topic=topic,
         issued_on=None,
         deleted_at=None,
         created_at="2024-01-15T10:00:00",

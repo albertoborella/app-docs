@@ -170,26 +170,134 @@ def test_no_match_search_returns_empty_without_error(client, admin_token, user_t
     assert response.json() == []
 
 
-def test_filter_by_document_type(client, admin_token, user_token):
+def test_filter_by_document_type_uses_contains(client, admin_token, user_token):
     create_via_api(
-        client, admin_token, title="R", issuing_body="SENASA", document_type="resolución"
+        client, admin_token, title="A", issuing_body="SENASA", document_type="Circular 2761"
     )
-    create_via_api(client, admin_token, title="D", issuing_body="SENASA", document_type="decreto")
+    create_via_api(
+        client, admin_token, title="B", issuing_body="SENASA", document_type="Circular 2762"
+    )
+    create_via_api(
+        client, admin_token, title="C", issuing_body="SENASA", document_type="Resolución"
+    )
     response = client.get(
-        "/api/v1/documents", headers=bearer(user_token), params={"document_type": "decreto"}
+        "/api/v1/documents", headers=bearer(user_token), params={"document_type": "2761"}
     )
     assert response.status_code == 200
-    assert [item["title"] for item in response.json()] == ["D"]
+    assert [item["title"] for item in response.json()] == ["A"]
+    response = client.get(
+        "/api/v1/documents", headers=bearer(user_token), params={"document_type": "circular"}
+    )
+    assert [item["title"] for item in response.json()] == ["A", "B"]
 
 
-def test_filter_by_issuing_body(client, admin_token, user_token):
+def test_filter_by_issuing_body_uses_contains(client, admin_token, user_token):
     create_via_api(client, admin_token, title="R", issuing_body="SENASA")
     create_via_api(client, admin_token, title="D", issuing_body="MVD")
     response = client.get(
-        "/api/v1/documents", headers=bearer(user_token), params={"issuing_body": "MVD"}
+        "/api/v1/documents", headers=bearer(user_token), params={"issuing_body": "MV"}
     )
     assert response.status_code == 200
     assert [item["title"] for item in response.json()] == ["D"]
+
+
+def test_create_document_with_country_and_topic_round_trip(client, admin_token, user_token):
+    response = create_via_api(
+        client,
+        admin_token,
+        title="Circular 2761 B",
+        issuing_body="MVD",
+        country="Uruguay",
+        topic="lácteos",
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["country"] == "Uruguay"
+    assert body["topic"] == "lácteos"
+
+    listed = client.get("/api/v1/documents", headers=bearer(user_token))
+    assert listed.status_code == 200
+    item = listed.json()[0]
+    assert item["country"] == "Uruguay"
+    assert item["topic"] == "lácteos"
+
+
+def test_country_and_topic_default_to_none(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
+    response = client.get("/api/v1/documents", headers=bearer(user_token))
+    assert response.status_code == 200
+    item = response.json()[0]
+    assert item["country"] is None
+    assert item["topic"] is None
+
+
+def test_filter_by_country_uses_contains(client, admin_token, user_token):
+    create_via_api(client, admin_token, title="Uy", issuing_body="MVD", country="Uruguay")
+    create_via_api(client, admin_token, title="Ar", issuing_body="MAGAP", country="Argentina")
+    response = client.get(
+        "/api/v1/documents", headers=bearer(user_token), params={"country": "urugu"}
+    )
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == ["Uy"]
+
+
+def test_filter_by_topic_uses_contains(client, admin_token, user_token):
+    create_via_api(
+        client, admin_token, title="A", issuing_body="SENASA", topic="Produccion primaria"
+    )
+    create_via_api(client, admin_token, title="B", issuing_body="SENASA", topic="Comercio")
+    create_via_api(client, admin_token, title="C", issuing_body="SENASA")  # topic NULL
+    response = client.get(
+        "/api/v1/documents", headers=bearer(user_token), params={"topic": "primaria"}
+    )
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == ["A"]
+
+
+def test_country_and_topic_filters_combine_with_query(client, admin_token, user_token):
+    create_via_api(
+        client,
+        admin_token,
+        title="Circular 1",
+        issuing_body="MVD",
+        country="Uruguay",
+        topic="Produccion primaria",
+    )
+    create_via_api(
+        client,
+        admin_token,
+        title="Circular 2",
+        issuing_body="MVD",
+        country="Uruguay",
+        topic="Comercio",
+    )
+    create_via_api(
+        client,
+        admin_token,
+        title="Circular 3",
+        issuing_body="MVD",
+        country="Chile",
+        topic="Produccion primaria",
+    )
+    response = client.get(
+        "/api/v1/documents",
+        headers=bearer(user_token),
+        params={"query": "circular", "country": "urugu", "topic": "primaria"},
+    )
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == ["Circular 1"]
+
+
+def test_admin_can_patch_country_and_topic(client, admin_token):
+    create_via_api(client, admin_token, title="A", issuing_body="SENASA")
+    response = client.patch(
+        "/api/v1/documents/1",
+        headers=bearer(admin_token),
+        json={"country": "Uruguay", "topic": "lácteos"},
+    )
+    assert response.status_code == 200
+    assert response.json()["country"] == "Uruguay"
+    assert response.json()["topic"] == "lácteos"
 
 
 # --- Soft delete, admin bin, restore ---------------------------------------------

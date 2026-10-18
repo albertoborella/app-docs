@@ -19,6 +19,8 @@ def list_documents(
     query: str | None = None,
     document_type: str | None = None,
     issuing_body: str | None = None,
+    country: str | None = None,
+    topic: str | None = None,
     deleted: bool = Query(default=False),
 ) -> list[DocumentOut]:
     documents = document_service.list_documents(
@@ -26,6 +28,8 @@ def list_documents(
         query=query,
         document_type=document_type,
         issuing_body=issuing_body,
+        country=country,
+        topic=topic,
         deleted=deleted and user.role == Role.admin,
     )
     return [DocumentOut.model_validate(d) for d in documents]

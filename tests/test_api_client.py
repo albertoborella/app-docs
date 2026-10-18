@@ -128,6 +128,8 @@ def test_list_documents_returns_document_models():
                     "issuing_body": "MAGAP",
                     "description": None,
                     "document_type": "Resolución",
+                    "country": None,
+                    "topic": None,
                     "issued_on": "2024-01-15",
                     "deleted_at": None,
                     "created_at": "2024-01-15T10:00:00",
