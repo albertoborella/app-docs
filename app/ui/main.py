@@ -30,8 +30,10 @@ def main(page: ft.Page) -> None:
     page.title = APP_TITLE
     page.theme_mode = ft.ThemeMode.SYSTEM
     client = ApiClient()
+    # Flet 1.0.4: FilePicker is a Service that auto-registers with the page on
+    # construction (context.page is already set inside main()). Appending it to
+    # page.overlay instead renders it as an unknown visible control.
     file_picker = ft.FilePicker()
-    page.overlay.append(file_picker)
 
     def show_sign_in() -> None:
         view = SignInView(client, on_success=show_catalog)

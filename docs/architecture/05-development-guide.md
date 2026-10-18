@@ -145,6 +145,7 @@ El flag `-r` (`--recursive`) es importante: las vistas viven en `app/ui/views/`,
 
 - **`uv sync` puede remover `flet-cli`** del venv (no está en `pyproject.toml`). No rompas la cabeza: el siguiente `uv run flet ...` lo reinstala solo. Siempre usá `uv run flet ...`, nunca `flet ...` a secas.
 - Flet 1.0 eliminó `ft.app`: el entry point (`app/ui/main.py`) usa `ft.run(main)`.
+- `FilePicker` en Flet 1.0.4 es un **Service auto-registrado**: con construirlo dentro de `main()` alcanza (`context.page` ya está seteado). **No va en `page.overlay`** — ahí el renderer lo recibe como control visible y muestra un placeholder "Unknown control: FilePicker".
 - El `SnackBar` pasa por `page.show_dialog(ft.SnackBar(...))`, no `page.open` (pre-1.0).
 - El 401 de login no distingue contraseña incorrecta de instalación sin administrador: el hint de `create-admin` aparece ante cualquier error de autenticación.
 
