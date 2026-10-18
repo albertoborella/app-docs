@@ -77,3 +77,11 @@ def store_file(
     db.commit()
     db.refresh(record)
     return record
+
+
+def read_stored_file(record: DocumentFile) -> bytes | None:
+    root = get_settings().storage_dir.resolve()
+    path = (root / record.stored_path).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        return None
+    return path.read_bytes()

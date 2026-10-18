@@ -197,3 +197,63 @@ def test_client_filename_never_touches_filesystem(client, admin_token, tmp_path)
     assert record.original_filename == "../../evil.pdf"  # metadata only, never a path
     # Nothing escaped the storage root
     assert list(tmp_path.rglob("evil.pdf")) == []
+
+
+# --- Download: authed GET, deleted-document authz ----------------------------------
+
+
+def test_authenticated_normal_user_downloads_file(client, admin_token, user_token):
+    document = create_document("Acta 8", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    response = client.get(
+        f"/api/v1/documents/{document.id}/file", headers=bearer(user_token)
+    )
+    assert response.status_code == 200
+    assert response.content == PDF_BYTES
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert "attachment" in response.headers["content-disposition"]
+    assert "acta.pdf" in response.headers["content-disposition"]
+
+
+def test_anonymous_cannot_download(client, admin_token):
+    document = create_document("Acta 9", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    assert client.get(f"/api/v1/documents/{document.id}/file").status_code == 401
+
+
+def test_get_without_stored_file_returns_404(client, admin_token, user_token):
+    document = create_document("Acta 10", "SENASA")
+    response = client.get(
+        f"/api/v1/documents/{document.id}/file", headers=bearer(user_token)
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Archivo no encontrado."
+
+
+def test_get_unknown_document_returns_404(client, user_token):
+    response = client.get("/api/v1/documents/999/file", headers=bearer(user_token))
+    assert response.status_code == 404
+
+
+def test_deleted_document_file_hidden_from_normal_user(client, admin_token, user_token):
+    document = create_document("Obsoleto", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    assert client.delete(
+        f"/api/v1/documents/{document.id}", headers=bearer(admin_token)
+    ).status_code == 204
+    response = client.get(
+        f"/api/v1/documents/{document.id}/file", headers=bearer(user_token)
+    )
+    assert response.status_code == 404  # no existence leak
+    assert response.json()["detail"] == "Documento no encontrado."
+
+
+def test_admin_still_downloads_deleted_document_file(client, admin_token):
+    document = create_document("Obsoleto 2", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    client.delete(f"/api/v1/documents/{document.id}", headers=bearer(admin_token))
+    response = client.get(
+        f"/api/v1/documents/{document.id}/file", headers=bearer(admin_token)
+    )
+    assert response.status_code == 200
+    assert response.content == PDF_BYTES

@@ -1,11 +1,14 @@
 """File routes: admin upload/replace (PUT), authenticated download (GET)."""
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlmodel import Session
 
-from app.api.deps import require_admin
+from app.api.deps import get_current_user, require_admin
 from app.api.schemas import FileOut
-from app.db.models import Document, User
+from app.db.models import Document, Role, User
 from app.db.session import get_session
 from app.services import document_service, file_service
 
@@ -19,6 +22,11 @@ def _load_document(db: Session, document_id: int) -> Document:
     if document is None:
         raise HTTPException(status_code=404, detail="Documento no encontrado.")
     return document
+
+
+def _content_disposition(filename: str) -> str:
+    fallback = filename.encode("ascii", "ignore").decode().replace('"', "") or "file"
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename)}"
 
 
 @router.put("/documents/{document_id}/file", response_model=FileOut)
@@ -48,3 +56,25 @@ async def upload_file(
         data=b"".join(chunks),
     )
     return FileOut.model_validate(record)
+
+
+@router.get("/documents/{document_id}/file")
+def download_file(
+    document_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_session),
+) -> Response:
+    document = _load_document(db, document_id)
+    if document.deleted_at is not None and user.role != Role.admin:
+        raise HTTPException(status_code=404, detail="Documento no encontrado.")
+    record = file_service.get_file_record(db, document_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+    data = file_service.read_stored_file(record)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+    return Response(
+        content=data,
+        media_type=record.content_type,
+        headers={"Content-Disposition": _content_disposition(record.original_filename)},
+    )
