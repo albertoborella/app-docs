@@ -1,7 +1,46 @@
 # Apply Progress: dairy-doc-manager
 
-**Cumulative batches**: Phase 1 (Foundation, tasks 1.1–1.6, commit 286244a, merged to main in 81860c3) + Phase 2 (Auth & Users API, tasks 2.1–2.2, commits 636eb43+626fe91) + Phase 3 (Documents CRUD & Soft Delete, task 3.1) + Phase 4 (File Storage, tasks 4.1–4.2, COMPLETE) | **Mode**: Standard (strict_tdd: false; tasks mandate RED+GREEN — followed per task)
-**Branch (current batch)**: feat/dairy-doc-manager-phase-4-files (from main 0afe605) | **Chain**: stacked-to-main (Phase 4 = PR 4 of 8, two under-400 work-unit commits: 408087c + 0d6edaa) | **Date**: 2026-10-17
+**Cumulative batches**: Phase 1 (Foundation, tasks 1.1–1.6, commit 286244a, merged to main in 81860c3) + Phase 2 (Auth & Users API, tasks 2.1–2.2, commits 636eb43+626fe91) + Phase 3 (Documents CRUD & Soft Delete, task 3.1) + Phase 4 (File Storage, tasks 4.1–4.2, COMPLETE) + Phase 5 (Flet UI + API Client, tasks 5.1–5.2, COMPLETE) | **Mode**: Standard (strict_tdd: false; tasks mandate RED+GREEN — followed per task)
+**Branch (current batch)**: feat/dairy-doc-manager-phase-5-ui-client | **Chain**: stacked-to-main (Phase 5 = PR 5 of 8, work-unit commits under app/ui + tests) | **Date**: 2026-10-18
+
+## Phase 5: Flet UI + API Client (batch 5) — COMPLETE
+
+### Decision record
+
+Flet **1.0.4** is the pinned UI stack. Two version facts forced design-faithful adaptations (design.md still names pre-1.0 symbols in places):
+
+1. **`ft.app` does not exist in Flet 1.0.4** — the public entry API is `ft.run(main)` / `ft.run_async(main)`. Desktop entry `app/ui/main.py` uses `ft.run`; design's "entry points: `flet run app/ui`" is satisfied by placing `main.py` under `app/ui/` with project-root path bootstrap (flet loads the script with only `app/ui` on `sys.path`).
+2. **`flet.testing` cannot be imported without NumPy/Pillow/scikit-image** — those are not in the pinned stack and the no-new-deps constraint forbids adding them. Widget-level headless Page tests are therefore deferred; Phase 5.2 tests unit-test pure-Python view-models (mock client) plus offline Flet control-tree structure assertions (no Page instance).
+
+Task 5.1 (RED+GREEN): `tests/test_api_client.py` (15 tests) written first → collection `ModuleNotFoundError: No module named 'app.ui'` → `app/ui/api_client.py` GREEN.
+
+- `ApiClient(base_url, token=None, *, transport=None, timeout=30)` — base URL from ctor arg or `DOCMANAGER_API_URL`, default `http://127.0.0.1:8000`. Bearer header on every authenticated call. Domain errors only: `ApiError` / `AuthError` (401) / `NotFoundError` (404); transport failures raise `ApiError("No se pudo conectar con el servidor.")` never raw `httpx` exceptions. Spanish `detail` from the backend body is preserved when present.
+- `login` → POST `/api/v1/auth/login`, stores token, returns `UserOut` (schemas reused from `app.api.schemas` — one contract source). `logout` → POST + clears token. `list_documents(*, query, document_type, issuing_body, deleted)` serializes non-None params (`deleted` as `true`/`false`). `upload_file(document_id, local_path)` PUT multipart `files={"file": (name, handle, content_type)}`. `download_file` returns raw bytes; 401→AuthError, 404→NotFoundError.
+
+Task 5.2 (views): `tests/test_ui_views.py` (12 tests) → `app/ui/views/sign_in.py`, `app/ui/views/catalog.py`, `app/ui/main.py`.
+
+- **DI**: both views take `ApiClient` as a constructor dependency; `CatalogView` also takes `FilePicker` and optional `on_sign_out` / `on_notice` callbacks so Phase 6 admin views and Phase 7 mount can reuse them.
+- **SignInViewModel.submit**: success stores user; `AuthError` sets Spanish error + bootstrap hint pointing at `python -m app.cli create-admin` (design: "the API returns 401 and the UI shows the Spanish message directing the operator to run the command" — login cannot distinguish wrong-password from zero-admin, so the hint is shown on any 401); generic `ApiError` has no bootstrap hint.
+- **CatalogViewModel**: blank filters become `None`; `refresh` keeps prior rows on error and records `error_message`; `download` delegates to client bytes.
+- **Download mechanism**: Flet 1.0.4 `FilePicker.save_file(dialog_title, file_name, src_bytes=...)` (async) — desktop/mobile save dialog; suggested filename is the document title (client contract returns bytes only, no Content-Disposition filename). Notices via `page.show_dialog(ft.SnackBar(...))` (Flet 1.0.4 API — not pre-1.0 `page.open`).
+- **Spanish copy**: sign-in (Inicio de sesión / Usuario / Contraseña / Iniciar sesión / create-admin hint), catalog (Catálogo de documentos / Buscar / Tipo de documento / Órgano emisor / Descargar / Cerrar sesión / No hay documentos. / No se pudo cargar el catálogo.). Code identifiers/comments English.
+- Filters are free-text `TextField`s (design: free-text document_type/issuing_body — enum catalogs forbidden).
+
+### Phase 5 Evidence (exact command outputs)
+
+- RED 5.1: `.venv/bin/python -m pytest tests/test_api_client.py -q` → collection error `ModuleNotFoundError: No module named 'app.ui'`
+- GREEN 5.1: `.venv/bin/python -m pytest tests/test_api_client.py -q` → `15 passed`; full suite `86 passed` (71 pre-existing preserved)
+- RED 5.2: `.venv/bin/python -m pytest tests/test_ui_views.py -q` → collection error `ModuleNotFoundError: No module named 'app.ui.views'`
+- GREEN 5.2: `.venv/bin/python -m pytest tests/test_ui_views.py -q` → `12 passed`
+- Final: `.venv/bin/python -m pytest tests/ -q` → `98 passed, 1 warning in 62.73s` (71 pre-existing Phase 1–4 preserved + 15 api_client + 12 views); `.venv/bin/ruff check .` → `All checks passed!`
+
+### Phase 5 Work Unit Evidence (Unit 5: Flet shared, batch 5)
+
+| Evidence | Value |
+|---|---|
+| Focused test command | `.venv/bin/python -m pytest tests/test_api_client.py tests/test_ui_views.py -q` → 27 passed; `.venv/bin/python -m pytest tests/ -q` → 98 passed (71 pre-existing preserved); `ruff check .` → All checks passed |
+| Runtime harness | Unit/contract harness for this batch: httpx.MockTransport drives the full ApiClient HTTP contract (auth header, query serialization, multipart body, bytes download, transport-error mapping) without a live server. Desktop `flet run app/ui` smoke: N/A for this batch — requires a display/desktop session and a reachable API; the orchestrator verify gate re-runs the suite. `app.ui.main` import + control construction verified offline (`import app.ui.main` succeeds; view.build() returns ft.View). |
+| Rollback boundary | Revert the Phase 5 work-unit commits (remove `app/ui/` (api_client, views, main), `tests/test_api_client.py`, `tests/test_ui_views.py`; revert `tasks.md` 5.1/5.2 marks + this file). Phase 1–4 files otherwise untouched — repo stays green on Phases 1–4 alone. |
 
 ## Phase 4: File Storage (batch 4) — COMPLETE
 
@@ -79,6 +118,8 @@ Work Unit Evidence (Unit 1: Scaffold+CLI — batch 1, preserved):
 | 3.1 | `tests/test_documents_api.py` written first → 19 failed / 2 passed (no /documents routes; 401-only assertions trivially passed) | `app/services/document_service.py`, `app/api/routes/documents.py`, DocumentOut/Create/Patch schemas, router wired in `main.py` → 21 passed | 3 E501s fixed by wrapping long client.get calls; awkward ternary in list_documents rewritten as if/else |
 | 4.1 | `tests/test_files_api.py` written first (14 tests) → 13 failed / 1 passed (no /files routes; GET-unknown trivially 404) | N/A — 4.1 is the RED half by design; GREEN owned by 4.2 | N/A |
 | 4.2 | — | First GREEN attempt exposed the missing python-multipart runtime (blocked, escalated, option (a) approved and pinned 0.0.32); resumed: PUT landed in 408087c (8 tests green), GET + full 14-test restore landed in 0d6edaa → 14 passed / 71 total | `_content_disposition` ASCII-fallback + RFC 5987 `filename*` for non-ASCII names; `read_stored_file` re-validates stored_path against the storage root; chunked PUT read aborts early at the 25 MB cap |
+| 5.1 | `tests/test_api_client.py` written first (15 tests) → collection `ModuleNotFoundError: No module named 'app.ui'` | `app/ui/api_client.py` + `app/ui/__init__.py` → 15 passed / 86 total | httpx MockTransport injection via ctor `transport=`; header assertions use case-insensitive `request.headers.get("Authorization")`; transport-error test supplies a token so the request actually hits the MockTransport |
+| 5.2 | `tests/test_ui_views.py` written first (12 tests) → collection `ModuleNotFoundError: No module named 'app.ui.views'` | `app/ui/views/{sign_in,catalog}.py`, `app/ui/main.py` → 12 passed / 98 total | Offline control-tree walker includes `appbar` + TextField labels + tooltips and skips `visible=False` nodes; SnackBar uses Flet 1.0.4 `page.show_dialog` (not pre-1.0 `page.open`) |
 
 ## Deviations
 
@@ -96,4 +137,9 @@ Work Unit Evidence (Unit 1: Scaffold+CLI — batch 1, preserved):
 - Phase 3 size: full batch measured 495 changed lines (>400 budget) → split into two work-unit commits per work-unit-commits skill: 864bf04 read-only catalog (240 lines) + 2dbfa19 admin CRUD/soft-delete/restore (325 lines); each under 400, tests travel with the behavior they verify.
 - Phase 4: `python-multipart` (required by starlette for multipart form parsing) was absent from the pinned stack; the batch stopped and escalated rather than silently adding a dependency or deviating to raw-body PUT. Orchestrator/user approved option (a): pin `python-multipart==0.0.32` (honors design's confirmed multipart contract). uv venv has no pip — use `uv sync --extra dev` for installs or pytest/ruff disappear.
 - Phase 4: allowlist is extension-based (orchestrator hard constraint "Allowlist extensions only"); content_type is stored/served but not itself allowlisted. `uv.lock` generated by the orchestrator's `uv sync` is left untracked (repo convention is exact pins in pyproject without a lock file) — orchestrator decides whether to commit it.
-- Remaining: Phases 5–8 pending. Deployment target/operator still open P0 (non-blocking).
+- Phase 5: design.md's `ft.app(...)` is not the Flet 1.0.4 symbol — implemented with `ft.run(main)` (verified against `.venv` flet 1.0.4: `hasattr(ft, 'app') is False`, `ft.run` is the entry). Desktop run remains `flet run app/ui` per design entry points.
+- Phase 5: `flet.testing` / `FletTestApp` require numpy+Pillow+scikit-image (absent; no-new-deps constraint) — widget-level Page tests deferred; view-models are pure Python with injected client mocks, plus offline `build()` structure tests that never need a Page.
+- Phase 5: login cannot distinguish zero-admin bootstrap from wrong password (both 401 "Credenciales inválidas."); bootstrap hint is shown on every login AuthError, matching design's "must not look broken" mitigation without a dedicated health endpoint.
+- Phase 5: `ApiClient` accepts an optional `transport=` ctor arg (httpx.MockTransport) solely for tests — not part of design's public contract surface, additive and test-only.
+- Phase 5: UI schemas reuse `app.api.schemas` (UserOut/DocumentOut/FileOut) rather than duplicating DTOs — one contract source, same codebase.
+- Remaining: Phases 6–8 pending. Deployment target/operator still open P0 (non-blocking).

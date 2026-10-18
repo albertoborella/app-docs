@@ -45,8 +45,8 @@ Chain strategy: pending
 
 ## Phase 5: Flet UI + API Client
 
-- [ ] 5.1 RED+GREEN `tests/test_api_client.py` → `app/ui/api_client.py` (httpx+bearer): login, list_documents(filters), upload_file, download_file; mocked httpx.
-- [ ] 5.2 Shared views: sign-in, catalog search/filter, download; Spanish; zero-admin 401 → create-admin.
+- [x] 5.1 RED+GREEN `tests/test_api_client.py` → `app/ui/api_client.py` (httpx+bearer): login, list_documents(filters), upload_file, download_file; mocked httpx.
+- [x] 5.2 Shared views: sign-in, catalog search/filter, download; Spanish; zero-admin 401 → create-admin.
 
 ## Phase 6: Admin Flet Views
 
