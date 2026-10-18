@@ -92,6 +92,8 @@ def test_list_documents_serializes_filters_to_query_string():
         query="resolución",
         document_type="Decreto",
         issuing_body="MAGAP",
+        country="Uruguay",
+        topic="lácteos",
         deleted=True,
     )
 
@@ -100,6 +102,8 @@ def test_list_documents_serializes_filters_to_query_string():
     assert url.params["query"] == "resolución"
     assert url.params["document_type"] == "Decreto"
     assert url.params["issuing_body"] == "MAGAP"
+    assert url.params["country"] == "Uruguay"
+    assert url.params["topic"] == "lácteos"
     assert url.params["deleted"] == "true"
 
 
@@ -128,6 +132,8 @@ def test_list_documents_returns_document_models():
                     "issuing_body": "MAGAP",
                     "description": None,
                     "document_type": "Resolución",
+                    "country": None,
+                    "topic": None,
                     "issued_on": "2024-01-15",
                     "deleted_at": None,
                     "created_at": "2024-01-15T10:00:00",

@@ -6,7 +6,7 @@ Esquema físico en SQLite, derivado del modelo SQLModel del diseño (`design.md`
 
 - Motor: **SQLite en modo WAL**, con `foreign_keys=ON` (ver `../architecture/00-architecture.md`).
 - Tipos: SQLModel sobre Python ≥ 3.10; opcionalidad con PEP 604 (`str | None`), nunca `Optional`.
-- Sin framework de migraciones en v1: evolución por `ALTER` aditivos hasta que un cambio justifique Alembic.
+- Sin framework de migraciones en v1: evolución por `ALTER` aditivos hasta que un cambio justifique Alembic. Las columnas opcionales nuevas de `documents` (`country`, `topic`) se añaden a bases existentes con `app/db/migrations.py` (`ensure_document_columns`, idempotente), invocado por el CLI `create-admin`.
 - Los binarios **no** viven en la base: solo sus metadatos en `document_files`; los archivos en `$DOCMANAGER_STORAGE_DIR/documents/{document_id}/file`.
 
 ## Tablas y columnas
@@ -42,6 +42,8 @@ Esquema físico en SQLite, derivado del modelo SQLModel del diseño (`design.md`
 | `issuing_body` | TEXT | NOT NULL, indexada (`CONFIRMADO`) |
 | `description` | TEXT | nullable (`CONFIRMADO`) |
 | `document_type` | TEXT | nullable, texto libre (`CONFIRMADO`) |
+| `country` | TEXT | nullable, indexada; opcional, búsqueda por contiene |
+| `topic` | TEXT | nullable, indexada; opcional, búsqueda por contiene |
 | `issued_on` | DATE | nullable (`CONFIRMADO`) |
 | `deleted_at` | DATETIME | nullable, indexada; NULL = activo |
 | `created_at` | DATETIME | NOT NULL |
@@ -71,6 +73,8 @@ Esquema físico en SQLite, derivado del modelo SQLModel del diseño (`design.md`
 | `is_active` | `users` | `is_active` | Filtro de cuentas activas. |
 | `title` | `documents` | `title` | Búsqueda sobre metadatos. |
 | `issuing_body` | `documents` | `issuing_body` | Búsqueda y filtro por emisor. |
+| `country` | `documents` | `country` | Filtro por país (búsqueda por contiene). |
+| `topic` | `documents` | `topic` | Filtro por tema (búsqueda por contiene). |
 | `deleted_at` | `documents` | `deleted_at` | Consultas de papelera (`deleted_at IS NOT NULL`). |
 | **Parcial** | `documents` | `deleted_at WHERE deleted_at IS NULL` | Catálogo por defecto: el listado activo es el caso frecuente. |
 | `document_id` (único) | `document_files` | `document_id` | Integridad de 1 a 0..1 archivo por documento. |
@@ -80,7 +84,7 @@ Esquema físico en SQLite, derivado del modelo SQLModel del diseño (`design.md`
 
 ## Búsqueda
 
-- Búsqueda actual: `SQL LIKE` sobre las columnas de metadatos indexadas (en particular `title` e `issuing_body`).
+- Búsqueda actual: `SQL LIKE` sobre las columnas de metadatos indexadas (en particular `title` e `issuing_body`); los filtros de catálogo (`document_type`, `issuing_body`, `country`, `topic`) también son `LIKE` por contiene.
 - Vía de mejora documentada si la revisión de rendimiento (NFR-03) no alcanza la latencia deseada: **FTS5 sobre metadatos** (no sobre el contenido de los binarios — indexar contenido está fuera de alcance).
 
 ## Relaciones (integridad referencial)

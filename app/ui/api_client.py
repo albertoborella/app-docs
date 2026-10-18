@@ -90,6 +90,8 @@ class ApiClient:
         query: str | None = None,
         document_type: str | None = None,
         issuing_body: str | None = None,
+        country: str | None = None,
+        topic: str | None = None,
         deleted: bool | None = None,
     ) -> list[DocumentOut]:
         """GET /documents with optional free-text search and filters."""
@@ -100,6 +102,10 @@ class ApiClient:
             params["document_type"] = document_type
         if issuing_body is not None:
             params["issuing_body"] = issuing_body
+        if country is not None:
+            params["country"] = country
+        if topic is not None:
+            params["topic"] = topic
         if deleted is not None:
             params["deleted"] = "true" if deleted else "false"
         data = self._request("GET", f"{_API_PREFIX}/documents", params=params)

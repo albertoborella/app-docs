@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 
 import flet as ft
@@ -15,6 +16,7 @@ DOWNLOAD_ERROR_MESSAGE = "No se pudo descargar el archivo."
 DOWNLOAD_DONE_MESSAGE = "Archivo descargado."
 DOWNLOAD_CANCELLED_MESSAGE = "Descarga cancelada."
 SAVE_DIALOG_TITLE = "Guardar archivo"
+FILTER_DEBOUNCE_SECONDS = 0.3
 
 
 class CatalogViewModel:
@@ -27,6 +29,8 @@ class CatalogViewModel:
         self.query: str | None = None
         self.document_type: str | None = None
         self.issuing_body: str | None = None
+        self.country: str | None = None
+        self.topic: str | None = None
 
     def refresh(self) -> None:
         try:
@@ -34,6 +38,8 @@ class CatalogViewModel:
                 query=_blank_to_none(self.query),
                 document_type=_blank_to_none(self.document_type),
                 issuing_body=_blank_to_none(self.issuing_body),
+                country=_blank_to_none(self.country),
+                topic=_blank_to_none(self.topic),
             )
             self.error_message = None
         except ApiError as exc:
@@ -66,14 +72,18 @@ class CatalogView:
         self.file_picker = file_picker
         self.on_notice = on_notice
         self.vm = CatalogViewModel(client)
+        self._filter_timer: threading.Timer | None = None
 
         self._search_field = ft.TextField(
             label="Buscar",
             on_submit=self._on_search,
+            on_change=self._on_filter_change,
             expand=True,
         )
-        self._type_field = ft.TextField(label="Tipo de documento")
-        self._body_field = ft.TextField(label="Órgano emisor")
+        self._type_field = ft.TextField(label="Tipo de documento", on_change=self._on_filter_change)
+        self._body_field = ft.TextField(label="Órgano emisor", on_change=self._on_filter_change)
+        self._country_field = ft.TextField(label="País", on_change=self._on_filter_change)
+        self._topic_field = ft.TextField(label="Tema", on_change=self._on_filter_change)
         self._rows = ft.Column(spacing=8, expand=True)
         self._error_text = ft.Text("", color=ft.Colors.ERROR, visible=False)
         self._empty_text = ft.Text(EMPTY_MESSAGE, visible=False)
@@ -105,6 +115,9 @@ class CatalogView:
                 ),
                 ft.Row(
                     controls=[self._type_field, self._body_field],
+                ),
+                ft.Row(
+                    controls=[self._country_field, self._topic_field],
                 ),
                 self._error_text,
                 self._empty_text,
@@ -161,9 +174,27 @@ class CatalogView:
         )
 
     def _on_search(self, _event: ft.ControlEvent | None = None) -> None:
+        self._cancel_filter_timer()
+        self._apply_filters()
+
+    def _on_filter_change(self, _event: ft.ControlEvent | None = None) -> None:
+        self._cancel_filter_timer()
+        self._filter_timer = threading.Timer(FILTER_DEBOUNCE_SECONDS, self._apply_filters)
+        self._filter_timer.daemon = True
+        self._filter_timer.start()
+
+    def _cancel_filter_timer(self) -> None:
+        if self._filter_timer is not None:
+            self._filter_timer.cancel()
+            self._filter_timer = None
+
+    def _apply_filters(self) -> None:
+        self._filter_timer = None
         self.vm.query = self._search_field.value
         self.vm.document_type = self._type_field.value
         self.vm.issuing_body = self._body_field.value
+        self.vm.country = self._country_field.value
+        self.vm.topic = self._topic_field.value
         self.vm.refresh()
         self._rebuild_rows()
 

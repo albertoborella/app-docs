@@ -41,6 +41,8 @@ class Document(SQLModel, table=True):
     issuing_body: str = Field(index=True)
     description: str | None = None
     document_type: str | None = None
+    country: str | None = Field(default=None, index=True)
+    topic: str | None = Field(default=None, index=True)
     issued_on: date | None = None
     deleted_at: datetime | None = Field(default=None, index=True)
     created_at: datetime

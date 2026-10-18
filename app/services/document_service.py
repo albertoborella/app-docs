@@ -14,6 +14,8 @@ def list_documents(
     query: str | None = None,
     document_type: str | None = None,
     issuing_body: str | None = None,
+    country: str | None = None,
+    topic: str | None = None,
     deleted: bool = False,
 ) -> list[Document]:
     stmt = select(Document)
@@ -26,9 +28,13 @@ def list_documents(
             Document.title.contains(query) | Document.issuing_body.contains(query)
         )
     if document_type is not None:
-        stmt = stmt.where(Document.document_type == document_type)
+        stmt = stmt.where(Document.document_type.contains(document_type))
     if issuing_body is not None:
-        stmt = stmt.where(Document.issuing_body == issuing_body)
+        stmt = stmt.where(Document.issuing_body.contains(issuing_body))
+    if country is not None:
+        stmt = stmt.where(Document.country.contains(country))
+    if topic is not None:
+        stmt = stmt.where(Document.topic.contains(topic))
     return list(db.exec(stmt.order_by(Document.id)).all())
 
 
@@ -43,6 +49,8 @@ def create_document(
     issuing_body: str,
     description: str | None = None,
     document_type: str | None = None,
+    country: str | None = None,
+    topic: str | None = None,
     issued_on: date | None = None,
 ) -> Document:
     now = utc_now()
@@ -51,6 +59,8 @@ def create_document(
         issuing_body=issuing_body,
         description=description,
         document_type=document_type,
+        country=country,
+        topic=topic,
         issued_on=issued_on,
         deleted_at=None,
         created_at=now,

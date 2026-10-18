@@ -44,6 +44,8 @@ class DocumentCreate(BaseModel):
     issuing_body: str = Field(min_length=1)
     description: str | None = None
     document_type: str | None = None
+    country: str | None = None
+    topic: str | None = None
     issued_on: date | None = None
 
 
@@ -52,6 +54,8 @@ class DocumentPatch(BaseModel):
     issuing_body: str | None = Field(default=None, min_length=1)
     description: str | None = None
     document_type: str | None = None
+    country: str | None = None
+    topic: str | None = None
     issued_on: date | None = None
 
 
@@ -63,6 +67,8 @@ class DocumentOut(BaseModel):
     issuing_body: str
     description: str | None
     document_type: str | None
+    country: str | None
+    topic: str | None
     issued_on: date | None
     deleted_at: datetime | None
     created_at: datetime

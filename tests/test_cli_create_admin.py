@@ -52,3 +52,36 @@ def test_password_argv_flag_is_rejected(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as excinfo:
         main(["create-admin", "--password", "oops-on-argv"])
     assert excinfo.value.code == 2
+
+
+def test_create_admin_upgrades_old_documents_schema(admin_env):
+    # Simulate a pre-upgrade database: documents table without country/topic.
+    conn = sqlite3.connect(admin_env)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE documents (
+                id INTEGER NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                issuing_body TEXT NOT NULL,
+                description TEXT,
+                document_type TEXT,
+                issued_on DATE,
+                deleted_at DATETIME,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    assert main(["create-admin", "--username", "admin"]) == 0
+
+    conn = sqlite3.connect(admin_env)
+    try:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(documents)")}
+    finally:
+        conn.close()
+    assert {"country", "topic"} <= columns
