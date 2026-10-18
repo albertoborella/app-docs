@@ -41,6 +41,8 @@ class ApiClient:
     def list_documents(self, *, query: str | None = None,
                        document_type: str | None = None,
                        issuing_body: str | None = None,
+                       country: str | None = None,
+                       topic: str | None = None,
                        deleted: bool | None = None) -> list[DocumentOut]
     def upload_file(self, document_id: int, local_path: str) -> FileOut
     def download_file(self, document_id: int) -> bytes
@@ -55,7 +57,18 @@ def require_admin(user: User = Depends(get_current_user)) -> User
 
 ## Notas de contrato
 
-- **Búsqueda**: `query` es texto libre (`LIKE` sobre metadatos indexados); `document_type` y `issuing_body` son dimensiones de filtro del diseño — las dimensiones finales son `CONFIRMADO` (usuario).
+- **Búsqueda y filtros de `GET /documents`**:
+
+  | Parámetro | Semántica |
+  | --- | --- |
+  | `query` | Texto libre (`LIKE` sobre `title` e `issuing_body` indexados) |
+  | `document_type` | Filtro por contiene (`LIKE '%…%'`) sobre `document_type` |
+  | `issuing_body` | Filtro por contiene (`LIKE '%…%'`) sobre `issuing_body` |
+  | `country` | Filtro por contiene (`LIKE '%…%'`) sobre `country` (opcional) |
+  | `topic` | Filtro por contiene (`LIKE '%…%'`) sobre `topic` (opcional) |
+  | `deleted` | Papelera; solo efecto para administradores |
+
+  `LIKE` en SQLite insensible a mayúsculas para ASCII; el plegado de acentos queda fuera de alcance. Las dimensiones de filtro finales son `CONFIRMADO` (usuario).
 - **Papelera**: `GET /documents?deleted=true` es privilegio de administrador; para usuarios normales el parámetro no expone retirados.
 - **Subida**: multipart PUT; validación de lista de formatos y límite en el servidor; la respuesta devuelve los metadatos del archivo (nombre original, tipo, tamaño, sha256).
 - **Sesión**: el token se transmite solo en `Authorization: Bearer`; no hay cookies.
