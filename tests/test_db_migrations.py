@@ -2,10 +2,15 @@
 
 import sqlite3
 
+from fastapi.testclient import TestClient
 from sqlalchemy import text
+from sqlmodel import Session, SQLModel
 
+from app.core.security import hash_password, utc_now
 from app.db.migrations import ensure_document_columns
+from app.db.models import Role, User
 from app.db.session import create_db_engine
+from app.main import app
 
 OLD_DOCUMENTS_TABLE = """
 CREATE TABLE documents (
@@ -78,3 +83,40 @@ def test_ensure_document_columns_noop_when_table_missing(tmp_path):
     engine = create_db_engine(tmp_path / "fresh.db")  # no tables at all
 
     ensure_document_columns(engine)  # must not raise
+
+
+def test_lifespan_heals_stale_db_and_list_documents_works(tmp_path, monkeypatch):
+    """App startup upgrades a pre-existing DB; GET /documents no longer 500s."""
+    db = tmp_path / "stale.db"
+    engine = _create_old_documents_table(db)  # documents table WITHOUT country/topic
+    SQLModel.metadata.create_all(engine)  # adds users etc.; existing documents skipped
+    with Session(engine) as session:
+        now = utc_now()
+        session.add(
+            User(
+                username="admin",
+                password_hash=hash_password("secret"),
+                role=Role.admin,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.commit()
+    engine.dispose()
+
+    monkeypatch.setenv("DOCMANAGER_DB_PATH", str(db))
+
+    with TestClient(app) as client:  # entering the context runs the lifespan
+        login = client.post(
+            "/api/v1/auth/login", json={"username": "admin", "password": "secret"}
+        )
+        assert login.status_code == 200
+        response = client.get(
+            "/api/v1/documents",
+            headers={"Authorization": f"Bearer {login.json()['token']}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == []
+    assert {"country", "topic"} <= _document_columns(db)
