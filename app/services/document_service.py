@@ -24,8 +24,14 @@ def list_documents(
     else:
         stmt = stmt.where(Document.deleted_at.is_(None))
     if query:
+        # Unified free-text search across every metadata field (user request).
         stmt = stmt.where(
-            Document.title.contains(query) | Document.issuing_body.contains(query)
+            Document.title.contains(query)
+            | Document.issuing_body.contains(query)
+            | Document.document_type.contains(query)
+            | Document.country.contains(query)
+            | Document.topic.contains(query)
+            | Document.description.contains(query)
         )
     if document_type is not None:
         stmt = stmt.where(Document.document_type.contains(document_type))

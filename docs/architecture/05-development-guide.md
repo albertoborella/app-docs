@@ -123,6 +123,22 @@ La superficie completa (edición de usuarios, borrado suave, restauración) y lo
 
 El frontend es una app Flet 1.0.4 (desktop o browser) que consume la API con el mismo `ApiClient` en todos los objetivos. Para probarla hace falta **dos terminales**: el backend y la UI.
 
+### Modelo mental: dos procesos, tres formas de entrar
+
+Todo lo que sigue se entiende con este esquema:
+
+- **Hay siempre dos procesos**: el **API** (uvicorn, puerto 8000) y la **UI** (Flet). No existen tres apps: la UI es el mismo código (`app/ui`) corriendo en dos modos — *escritorio* (ventana nativa) o *web* (la notebook la sirve como sitio web, puerto 8550).
+- **El API y la UI corren en la notebook.** El celular (u otra computadora) **nunca corre Python**: solo abre un navegador apuntado al sitio web que sirve la notebook. Por eso desde cualquier dispositivo ves la misma app, con la misma base y el mismo inicio de sesión.
+- **Tres formas de entrar**, todas contra el mismo API:
+
+| Desde dónde entrás | Comando / URL | Modo |
+| --- | --- | --- |
+| Ventana nativa en la notebook | `uv run flet run -r app/ui` | escritorio |
+| Navegador de la notebook | `http://localhost:8550` (con la UI en `--web`) | web |
+| Navegador del celular, misma Wi-Fi | `http://<IP-de-la-notebook>:8550` (con la UI en `--web`) | web |
+
+En escritorio el botón de cada fila es "Descargar" (diálogo de guardado); en web es "Abrir" (el PDF se abre en una pestaña nueva — en el celular, en el visor del teléfono). Los comandos exactos de cada modo están en *Camino rápido*, *Modos de ejecución* y *Acceso desde el celular*.
+
 ### Camino rápido
 
 1. Terminal 1 — backend: `uv run uvicorn app.main:app --reload`
@@ -180,7 +196,23 @@ Con el *hot reload* activo, guardás el archivo y la ventana refleja el cambio s
 2. `uv run flet run -r app/ui` (terminal 2).
 3. Login con el administrador → catálogo (vacío al principio).
 4. Subí un documento con su PDF desde Swagger o curl (sección anterior) y refrescá el catálogo para verlo.
-5. Probá búsqueda, filtros y descarga desde la UI.
+5. Probá la búsqueda y la descarga desde la UI.
+
+### Acceso desde el celular (modo web)
+
+Para usar la UI desde el navegador del celular (en la misma Wi-Fi que la notebook), la API y la UI deben escuchar en la red local, no solo en localhost:
+
+```bash
+# terminal 1 — API alcanzable desde la red local
+uv run uvicorn app.main:app --reload --host 0.0.0.0
+# terminal 2 — UI como sitio web (la IP es la de la notebook: hostname -I)
+DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --host "*" -p 8550 app/ui
+```
+
+- El celular, en la misma red Wi-Fi, abre `http://192.168.0.83:8550`.
+- Al tocar "Abrir" en una fila del catálogo, el PDF se abre en una pestaña nueva con el visor del navegador (sin diálogo de guardado); en escritorio el botón sigue siendo "Descargar" con diálogo de guardado.
+- **Token en la URL**: el botón "Abrir" navega a `GET /documents/{id}/file?token=…&inline=true`; el token de sesión queda en el URL. Es un atajo de uso local, no de producción — en producción se usarían URLs firmadas de vida corta.
+- Si la página no carga, revisá el firewall de la notebook (debe permitir los puertos 8000 y 8550 en la red local).
 
 ## Checklist
 

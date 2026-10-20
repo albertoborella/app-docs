@@ -47,6 +47,7 @@ def main(page: ft.Page) -> None:
             on_sign_out=show_sign_in,
             file_picker=file_picker,
             on_notice=_show_snack_bar,
+            web=page.web,
         )
         catalog.vm.refresh()
         page.views.clear()

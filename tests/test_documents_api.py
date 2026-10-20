@@ -163,6 +163,20 @@ def test_query_search_matches_title_and_issuing_body(client, admin_token, user_t
     assert [item["issuing_body"] for item in response.json()] == ["MVD"]
 
 
+def test_query_search_matches_all_metadata_fields(client, admin_token, user_token):
+    create_via_api(
+        client, admin_token, title="Normativa X", issuing_body="SENASA",
+        document_type="Circular", country="Argentina", topic="Comercio",
+        description="Importación de productos lácteos",
+    )
+    for term in ("argentina", "comercio", "circular", "lácteos"):
+        response = client.get(
+            "/api/v1/documents", headers=bearer(user_token), params={"query": term}
+        )
+        assert response.status_code == 200
+        assert [item["title"] for item in response.json()] == ["Normativa X"], term
+
+
 def test_no_match_search_returns_empty_without_error(client, admin_token, user_token):
     create_via_api(client, admin_token, title="A", issuing_body="SENASA")
     response = client.get("/api/v1/documents", headers=bearer(user_token), params={"query": "zzz"})

@@ -1,5 +1,6 @@
 """View-model and view-structure tests for shared Flet views (task 5.2)."""
 
+import asyncio
 from unittest.mock import MagicMock
 
 import flet as ft
@@ -110,25 +111,15 @@ def test_sign_in_view_model_generic_api_error_has_no_bootstrap_hint():
 # --- CatalogViewModel --------------------------------------------------------
 
 
-def test_catalog_refresh_passes_filters_to_client():
+def test_catalog_refresh_passes_query_to_client():
     client = MagicMock()
     client.list_documents.return_value = [make_document()]
     vm = CatalogViewModel(client)
 
     vm.query = "resolución"
-    vm.document_type = "Decreto"
-    vm.issuing_body = "MAGAP"
-    vm.country = "Uruguay"
-    vm.topic = "lácteos"
     vm.refresh()
 
-    client.list_documents.assert_called_once_with(
-        query="resolución",
-        document_type="Decreto",
-        issuing_body="MAGAP",
-        country="Uruguay",
-        topic="lácteos",
-    )
+    client.list_documents.assert_called_once_with(query="resolución")
     assert len(vm.documents) == 1
     assert vm.error_message is None
 
@@ -139,19 +130,9 @@ def test_catalog_refresh_skips_blank_filters():
     vm = CatalogViewModel(client)
 
     vm.query = "   "
-    vm.document_type = ""
-    vm.issuing_body = None  # type: ignore[assignment]
-    vm.country = "  "
-    vm.topic = ""
     vm.refresh()
 
-    client.list_documents.assert_called_once_with(
-        query=None,
-        document_type=None,
-        issuing_body=None,
-        country=None,
-        topic=None,
-    )
+    client.list_documents.assert_called_once_with(query=None)
 
 
 def test_catalog_refresh_api_error_sets_message_and_keeps_prior_documents():
@@ -210,7 +191,7 @@ def test_sign_in_view_builds_spanish_controls():
     assert password_fields and password_fields[0].password is True
 
 
-def test_catalog_view_builds_search_filters_and_rows():
+def test_catalog_view_builds_search_field_and_rows():
     document = make_document(title="Guía Técnica", issuing_body="ASEGUA", document_type="Guía")
     client = MagicMock()
     client.list_documents.return_value = [document]
@@ -223,10 +204,6 @@ def test_catalog_view_builds_search_filters_and_rows():
     joined = " | ".join(collect_text_values(view))
     assert "Catálogo de documentos" in joined
     assert "Buscar" in joined
-    assert "Tipo de documento" in joined
-    assert "Órgano emisor" in joined
-    assert "País" in joined
-    assert "Tema" in joined
     assert "Guía Técnica" in joined
     assert "ASEGUA" in joined
     assert "Guía" in joined
@@ -236,10 +213,10 @@ def test_catalog_view_builds_search_filters_and_rows():
     labels = {
         n.label for n in walk_controls(view) if isinstance(n, ft.TextField) and n.label
     }
-    assert "Tipo de documento" in labels
-    assert "Órgano emisor" in labels
-    assert "País" in labels
-    assert "Tema" in labels
+    assert "Buscar" in labels
+    removed_labels = {"Tipo de documento", "Órgano emisor", "País", "Tema"}
+    assert labels.isdisjoint(removed_labels)
+    assert not removed_labels & set(collect_text_values(view))
 
 
 def test_catalog_filter_fields_have_on_change_wired():
@@ -247,33 +224,12 @@ def test_catalog_filter_fields_have_on_change_wired():
     client.list_documents.return_value = []
     catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
 
-    for field in (
-        catalog._search_field,
-        catalog._type_field,
-        catalog._body_field,
-        catalog._country_field,
-        catalog._topic_field,
-    ):
-        assert field.on_change is not None
+    assert catalog._search_field.on_change is not None
 
 
 def test_catalog_filter_change_debounces_and_search_applies_immediately(monkeypatch):
-    class FakeTimer:
-        def __init__(self, interval, function, args=None, kwargs=None):
-            self.interval = interval
-            self.function = function
-            self.daemon = False
-            self.started = False
-            self.cancelled = False
-
-        def start(self):
-            self.started = True
-
-        def cancel(self):
-            self.cancelled = True
-
-    monkeypatch.setattr("app.ui.views.catalog.threading.Timer", FakeTimer)
-
+    assert FILTER_DEBOUNCE_SECONDS == 0.3  # exported debounce contract
+    monkeypatch.setattr("app.ui.views.catalog.FILTER_DEBOUNCE_SECONDS", 0)
     client = MagicMock()
     client.list_documents.return_value = []
     catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
@@ -281,28 +237,48 @@ def test_catalog_filter_change_debounces_and_search_applies_immediately(monkeypa
     catalog.build()
     client.list_documents.reset_mock()
 
-    catalog._country_field.value = "Uruguay"
-    catalog._topic_field.value = "lácteos"
-    catalog._on_filter_change()
-    pending = catalog._filter_timer
-    assert isinstance(pending, FakeTimer)
-    assert pending.interval == FILTER_DEBOUNCE_SECONDS
-    assert pending.started
-    client.list_documents.assert_not_called()  # debounced: not applied yet
+    async def scenario():
+        catalog._search_field.value = "resolución"
+        await catalog._on_filter_change()
+        pending = catalog._filter_task
+        assert pending is not None
+        client.list_documents.assert_not_called()  # debounced: not applied yet
 
-    catalog._on_search()  # Enter/button: cancels the pending timer and applies now
-    assert pending.cancelled
-    assert catalog._filter_timer is None
-    client.list_documents.assert_called_once_with(
-        query=None,
-        document_type=None,
-        issuing_body=None,
-        country="Uruguay",
-        topic="lácteos",
-    )
+        await catalog._on_search()  # Enter/button: cancels pending, applies now
+        assert catalog._filter_task is None
+        client.list_documents.assert_called_once_with(query="resolución")
 
-    pending.function()  # the debounce callback applies the same filters
-    assert client.list_documents.call_count == 2
+        catalog._filter_task = None
+        await catalog._on_filter_change()  # debounce path applies the same query
+        await catalog._filter_task
+        assert client.list_documents.call_count == 2
+        client.list_documents.assert_called_with(query="resolución")
+
+    asyncio.run(scenario())
+
+
+def test_catalog_download_click_handler_is_async():
+    import inspect
+    from functools import partial
+
+    client = MagicMock()
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+    row = catalog._document_row(make_document())
+    # find the FilledButton whose content text is "Descargar" by walking controls
+    buttons = [n for n in walk_controls(row) if isinstance(n, ft.FilledButton)]
+    assert len(buttons) == 1
+    handler = buttons[0].on_click
+    assert isinstance(handler, partial)
+    assert inspect.iscoroutinefunction(handler)
+
+
+def test_apply_filters_pushes_update_or_noops_offline():
+    client = MagicMock()
+    client.list_documents.return_value = []
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+    catalog.build()
+    asyncio.run(catalog._apply_filters())  # offline: _push_update must not raise
+    assert client.list_documents.called
 
 
 def test_catalog_view_empty_state_message():
@@ -326,3 +302,77 @@ def test_catalog_view_error_state_message():
     joined = " | ".join(collect_text_values(view))
     assert "No se pudo cargar el catálogo." in joined
     assert "No se pudo conectar con el servidor." in joined
+
+
+# --- Catalog web mode: direct open (Option B) ---------------------------------
+
+
+def test_file_url_builds_api_url_with_quoted_token_and_inline():
+    client = MagicMock()
+    client.base_url = "http://192.168.0.83:8550"
+    client.token = "abc+/=def"  # characters that must be percent-encoded
+    catalog = CatalogView(
+        client, on_sign_out=lambda: None, file_picker=ft.FilePicker(), web=True
+    )
+
+    url = catalog._file_url(make_document(document_id=7))
+
+    assert url == (
+        "http://192.168.0.83:8550/api/v1/documents/7/file"
+        "?token=abc%2B%2F%3Ddef&inline=true"
+    )
+
+
+def test_file_url_with_missing_token_yields_empty_token_param():
+    client = MagicMock()
+    client.base_url = "http://127.0.0.1:8000"
+    client.token = None
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+
+    url = catalog._file_url(make_document(document_id=3))
+
+    assert url == "http://127.0.0.1:8000/api/v1/documents/3/file?token=&inline=true"
+
+
+def test_web_mode_row_button_opens_url_in_new_tab(monkeypatch):
+    # ft.OpenUrl requires an active page context; stub it to capture url/target offline.
+    captured: dict = {}
+
+    class _StubOpenUrl:
+        def __init__(self, url, target=None):
+            captured["url"] = url
+            captured["target"] = target
+
+    monkeypatch.setattr("app.ui.views.catalog.ft.OpenUrl", _StubOpenUrl)
+    client = MagicMock()
+    client.base_url = "http://192.168.0.83:8550"
+    client.token = "tok"
+    catalog = CatalogView(
+        client, on_sign_out=lambda: None, file_picker=ft.FilePicker(), web=True
+    )
+    row = catalog._document_row(make_document(document_id=9))
+
+    buttons = [n for n in walk_controls(row) if isinstance(n, ft.FilledButton)]
+    assert len(buttons) == 1
+    button = buttons[0]
+    assert button.on_click is None  # no client-side byte fetch
+    assert isinstance(button.action, _StubOpenUrl)
+    assert captured["url"] == (
+        "http://192.168.0.83:8550/api/v1/documents/9/file?token=tok&inline=true"
+    )
+    assert captured["target"] == ft.UrlTarget.BLANK
+    assert "Abrir" in collect_text_values(row)
+    assert button.icon == ft.Icons.OPEN_IN_NEW
+
+
+def test_default_mode_is_desktop_download_button():
+    client = MagicMock()
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+
+    assert catalog.web is False
+    row = catalog._document_row(make_document())
+    buttons = [n for n in walk_controls(row) if isinstance(n, ft.FilledButton)]
+    assert len(buttons) == 1
+    assert buttons[0].on_click is not None
+    assert buttons[0].action is None
+    assert "Descargar" in collect_text_values(row)

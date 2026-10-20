@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-import threading
+import asyncio
+import functools
 from collections.abc import Callable
+from urllib.parse import quote
 
 import flet as ft
 
@@ -15,6 +17,8 @@ LOAD_ERROR_MESSAGE = "No se pudo cargar el catálogo."
 DOWNLOAD_ERROR_MESSAGE = "No se pudo descargar el archivo."
 DOWNLOAD_DONE_MESSAGE = "Archivo descargado."
 DOWNLOAD_CANCELLED_MESSAGE = "Descarga cancelada."
+DOWNLOAD_LABEL = "Descargar"
+OPEN_LABEL = "Abrir"
 SAVE_DIALOG_TITLE = "Guardar archivo"
 FILTER_DEBOUNCE_SECONDS = 0.3
 
@@ -27,20 +31,10 @@ class CatalogViewModel:
         self.documents: list[DocumentOut] = []
         self.error_message: str | None = None
         self.query: str | None = None
-        self.document_type: str | None = None
-        self.issuing_body: str | None = None
-        self.country: str | None = None
-        self.topic: str | None = None
 
     def refresh(self) -> None:
         try:
-            self.documents = self.client.list_documents(
-                query=_blank_to_none(self.query),
-                document_type=_blank_to_none(self.document_type),
-                issuing_body=_blank_to_none(self.issuing_body),
-                country=_blank_to_none(self.country),
-                topic=_blank_to_none(self.topic),
-            )
+            self.documents = self.client.list_documents(query=_blank_to_none(self.query))
             self.error_message = None
         except ApiError as exc:
             self.error_message = str(exc)
@@ -66,24 +60,23 @@ class CatalogView:
         on_sign_out: Callable[[], None],
         file_picker: ft.FilePicker,
         on_notice: Callable[[str], None] | None = None,
+        web: bool = False,
     ) -> None:
         self.client = client
         self.on_sign_out = on_sign_out
         self.file_picker = file_picker
         self.on_notice = on_notice
+        self.web = web
         self.vm = CatalogViewModel(client)
-        self._filter_timer: threading.Timer | None = None
+        self._filter_task: asyncio.Task | None = None
 
         self._search_field = ft.TextField(
             label="Buscar",
+            hint_text="Título, tipo, organismo, país, tema o descripción",
             on_submit=self._on_search,
             on_change=self._on_filter_change,
             expand=True,
         )
-        self._type_field = ft.TextField(label="Tipo de documento", on_change=self._on_filter_change)
-        self._body_field = ft.TextField(label="Órgano emisor", on_change=self._on_filter_change)
-        self._country_field = ft.TextField(label="País", on_change=self._on_filter_change)
-        self._topic_field = ft.TextField(label="Tema", on_change=self._on_filter_change)
         self._rows = ft.Column(spacing=8, expand=True)
         self._error_text = ft.Text("", color=ft.Colors.ERROR, visible=False)
         self._empty_text = ft.Text(EMPTY_MESSAGE, visible=False)
@@ -112,12 +105,6 @@ class CatalogView:
                             on_click=self._on_search,
                         ),
                     ]
-                ),
-                ft.Row(
-                    controls=[self._type_field, self._body_field],
-                ),
-                ft.Row(
-                    controls=[self._country_field, self._topic_field],
                 ),
                 self._error_text,
                 self._empty_text,
@@ -163,55 +150,84 @@ class CatalogView:
                                 ),
                             ],
                         ),
-                        ft.FilledButton(
-                            icon=ft.Icons.DOWNLOAD,
-                            content=ft.Text("Descargar"),
-                            on_click=lambda _e, doc=document: self._on_download(doc),
-                        ),
+                        self._row_button(document),
                     ],
                 ),
             )
         )
 
-    def _on_search(self, _event: ft.ControlEvent | None = None) -> None:
-        self._cancel_filter_timer()
-        self._apply_filters()
+    def _row_button(self, document: DocumentOut) -> ft.FilledButton:
+        if self.web:
+            return ft.FilledButton(
+                icon=ft.Icons.OPEN_IN_NEW,
+                content=ft.Text(OPEN_LABEL),
+                action=ft.OpenUrl(self._file_url(document), target=ft.UrlTarget.BLANK),
+            )
+        return ft.FilledButton(
+            icon=ft.Icons.DOWNLOAD,
+            content=ft.Text(DOWNLOAD_LABEL),
+            on_click=functools.partial(self._on_download, document),
+        )
 
-    def _on_filter_change(self, _event: ft.ControlEvent | None = None) -> None:
-        self._cancel_filter_timer()
-        self._filter_timer = threading.Timer(FILTER_DEBOUNCE_SECONDS, self._apply_filters)
-        self._filter_timer.daemon = True
-        self._filter_timer.start()
+    def _file_url(self, document: DocumentOut) -> str:
+        """Browser-navigable URL for the file: query token + inline display."""
+        token = quote(self.client.token or "", safe="")
+        return (
+            f"{self.client.base_url}/api/v1/documents/{document.id}/file"
+            f"?token={token}&inline=true"
+        )
 
-    def _cancel_filter_timer(self) -> None:
-        if self._filter_timer is not None:
-            self._filter_timer.cancel()
-            self._filter_timer = None
+    async def _on_search(self, _event: ft.ControlEvent | None = None) -> None:
+        self._cancel_filter_task()
+        await self._apply_filters()
 
-    def _apply_filters(self) -> None:
-        self._filter_timer = None
+    async def _on_filter_change(self, _event: ft.ControlEvent | None = None) -> None:
+        self._cancel_filter_task()
+        self._filter_task = asyncio.create_task(self._apply_filters_debounced())
+
+    async def _apply_filters_debounced(self) -> None:
+        try:
+            await asyncio.sleep(FILTER_DEBOUNCE_SECONDS)
+        except asyncio.CancelledError:
+            return
+        await self._apply_filters()
+
+    def _cancel_filter_task(self) -> None:
+        if self._filter_task is not None:
+            self._filter_task.cancel()
+            self._filter_task = None
+
+    async def _apply_filters(self) -> None:
         self.vm.query = self._search_field.value
-        self.vm.document_type = self._type_field.value
-        self.vm.issuing_body = self._body_field.value
-        self.vm.country = self._country_field.value
-        self.vm.topic = self._topic_field.value
-        self.vm.refresh()
+        await asyncio.to_thread(self.vm.refresh)
         self._rebuild_rows()
+        self._push_update()
+
+    def _push_update(self) -> None:
+        """Push rebuilt rows to the client; no-op when offline (unit tests)."""
+        try:
+            page = self._rows.page
+        except RuntimeError:
+            return
+        page.update()
 
     def _on_sign_out_click(self, _event: ft.ControlEvent | None = None) -> None:
+        self._cancel_filter_task()
         try:
             self.client.logout()
         except ApiError:
             pass
         self.on_sign_out()
 
-    async def _on_download(self, document: DocumentOut) -> None:
+    async def _on_download(
+        self, document: DocumentOut, _event: ft.ControlEvent | None = None
+    ) -> None:
         try:
-            data = self.vm.download(document.id)
+            data = await asyncio.to_thread(self.vm.download, document.id)
         except ApiError as exc:
             self._notice(f"{DOWNLOAD_ERROR_MESSAGE} {exc}")
             return
-        filename = f"{document.title}" if document.title else "documento"
+        filename = document.title or "documento"
         saved_path = await self.file_picker.save_file(
             dialog_title=SAVE_DIALOG_TITLE,
             file_name=filename,

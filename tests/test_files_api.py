@@ -257,3 +257,85 @@ def test_admin_still_downloads_deleted_document_file(client, admin_token):
     )
     assert response.status_code == 200
     assert response.content == PDF_BYTES
+
+
+# --- Query token & inline disposition (mobile web direct open) ----------------------
+
+
+def test_query_token_allows_download_without_header(client, admin_token, user_token):
+    document = create_document("Acta Q1", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    response = client.get(f"/api/v1/documents/{document.id}/file?token={user_token}")
+    assert response.status_code == 200
+    assert response.content == PDF_BYTES
+    assert "attachment" in response.headers["content-disposition"]
+    assert "acta.pdf" in response.headers["content-disposition"]
+
+
+def test_inline_param_sends_inline_disposition(client, admin_token, user_token):
+    document = create_document("Acta Q2", "SENASA")
+    upload_file(client, admin_token, document.id, "informe.pdf", PDF_BYTES)
+    response = client.get(
+        f"/api/v1/documents/{document.id}/file",
+        headers=bearer(user_token),
+        params={"inline": "true"},
+    )
+    assert response.status_code == 200
+    disposition = response.headers["content-disposition"]
+    assert disposition.startswith("inline;")
+    assert "informe.pdf" in disposition
+    assert "filename*=UTF-8''" in disposition  # filename logic unchanged
+
+
+def test_default_and_inline_false_keep_attachment(client, admin_token, user_token):
+    document = create_document("Acta Q3", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    for params in (None, {"inline": "false"}):
+        response = client.get(
+            f"/api/v1/documents/{document.id}/file",
+            headers=bearer(user_token),
+            params=params,
+        )
+        assert response.headers["content-disposition"].startswith("attachment;"), params
+
+
+def test_invalid_query_token_returns_401(client, admin_token):
+    document = create_document("Acta Q4", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    response = client.get(f"/api/v1/documents/{document.id}/file?token=token-invalido")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "No autenticado."
+
+
+def test_empty_query_token_returns_401(client, admin_token):
+    document = create_document("Acta Q5", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    assert client.get(f"/api/v1/documents/{document.id}/file?token=").status_code == 401
+
+
+def test_query_token_deleted_document_hidden_from_normal_user(client, admin_token, user_token):
+    document = create_document("Obsoleto Q", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    client.delete(f"/api/v1/documents/{document.id}", headers=bearer(admin_token))
+    response = client.get(f"/api/v1/documents/{document.id}/file?token={user_token}")
+    assert response.status_code == 404  # authz identical on the query-token path
+    assert response.json()["detail"] == "Documento no encontrado."
+
+
+def test_bearer_header_takes_precedence_over_query_token(client, admin_token, user_token):
+    document = create_document("Acta Q6", "SENASA")
+    upload_file(client, admin_token, document.id, "acta.pdf", PDF_BYTES)
+    response = client.get(
+        f"/api/v1/documents/{document.id}/file?token=token-invalido",
+        headers=bearer(user_token),
+    )
+    assert response.status_code == 200  # valid header wins over garbage query token
+
+
+def test_upload_ignores_query_token_stays_header_only(client, admin_token):
+    document = create_document("Acta Q7", "SENASA")
+    response = client.put(
+        f"/api/v1/documents/{document.id}/file?token={admin_token}",
+        files={"file": ("acta.pdf", PDF_BYTES, "application/pdf")},
+    )
+    assert response.status_code == 401  # query token is GET-download only

@@ -2,11 +2,11 @@
 
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlmodel import Session
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_file_access_user, require_admin
 from app.api.schemas import FileOut
 from app.db.models import Document, Role, User
 from app.db.session import get_session
@@ -24,9 +24,10 @@ def _load_document(db: Session, document_id: int) -> Document:
     return document
 
 
-def _content_disposition(filename: str) -> str:
+def _content_disposition(filename: str, *, inline: bool = False) -> str:
     fallback = filename.encode("ascii", "ignore").decode().replace('"', "") or "file"
-    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename)}"
+    disposition = "inline" if inline else "attachment"
+    return f"{disposition}; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename)}"
 
 
 @router.put("/documents/{document_id}/file", response_model=FileOut)
@@ -61,8 +62,9 @@ async def upload_file(
 @router.get("/documents/{document_id}/file")
 def download_file(
     document_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_file_access_user),
     db: Session = Depends(get_session),
+    inline: bool = Query(False),
 ) -> Response:
     document = _load_document(db, document_id)
     if document.deleted_at is not None and user.role != Role.admin:
@@ -73,8 +75,9 @@ def download_file(
     data = file_service.read_stored_file(record)
     if data is None:
         raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+    disposition = _content_disposition(record.original_filename, inline=inline)
     return Response(
         content=data,
         media_type=record.content_type,
-        headers={"Content-Disposition": _content_disposition(record.original_filename)},
+        headers={"Content-Disposition": disposition},
     )

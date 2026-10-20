@@ -17,7 +17,7 @@ Definición de pantallas, navegación y estados, derivada de las tareas de UI (f
 | --- | --- |
 | Contenido | Lista de documentos no retirados (título, cuerpo emisor y metadatos disponibles) |
 | Búsqueda | Texto libre sobre metadatos (`query` en `list_documents`) |
-| Filtro | Dimensiones del diseño: tipo de documento, cuerpo emisor (`CONFIRMADO`) |
+| Filtro | Sin campos por dimensión: la búsqueda unificada cubre tipo de documento, cuerpo emisor y demás metadatos |
 | Descarga | Acción "Descargar" por documento → `GET /documents/{id}/file` |
 | Estado vacío | Catálogo sin documentos: mensaje en español, sin error |
 | Búsqueda sin coincidencias | Lista vacía, sin error (escenario de spec) |

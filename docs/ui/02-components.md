@@ -13,8 +13,8 @@ Piezas reutilizables de la UI Flet comprometidas por el diseño. El catálogo co
 | Pieza | Uso | Particularidades por objetivo |
 | --- | --- | --- |
 | Selector de archivos (FilePicker) | Subida/reemplazo de archivo del documento (solo administrador) | Web: el archivo pasa como temporal de sesión vía `/upload` de `flet.fastapi`; escritorio/móvil: ruta local |
-| Acción "Descargar" | Trae el binario vía `download_file` | Web: entrega como descarga de navegador; escritorio/móvil: diálogo de guardado |
-| Campos de búsqueda y filtro | Alimentan `list_documents(query=..., document_type=..., issuing_body=...)` | Idénticos en los tres objetivos |
+| Acción por fila del documento | Obtiene el binario vía `GET /documents/{id}/file` | Web (celular): botón "Abrir" — pestaña nueva con visor directo (`?token=&inline=true`), sin diálogo de guardado; escritorio: botón "Descargar" — diálogo de guardado (comportamiento original) |
+| Campo de búsqueda | Alimenta `list_documents(query=...)` | Idéntico en los tres objetivos |
 
 ## Contenedores de vista (unidades de navegación)
 
