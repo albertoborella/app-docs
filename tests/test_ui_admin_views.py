@@ -1,6 +1,7 @@
 """View-model and view-structure tests for admin Flet views (phase 6)."""
 
 import asyncio
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import flet as ft
@@ -17,6 +18,14 @@ from app.ui.views.document_form import (
     UPLOADED_MESSAGE,
     DocumentFormView,
     DocumentFormViewModel,
+)
+from app.ui.views.recycle_bin import (
+    EMPTY_MESSAGE,
+    LOAD_ERROR_MESSAGE,
+    RESTORE_ERROR_MESSAGE,
+    RESTORED_MESSAGE,
+    RecycleBinView,
+    RecycleBinViewModel,
 )
 
 
@@ -439,5 +448,173 @@ def test_document_form_session_expired_invokes_callback():
     fill_form(form)
 
     asyncio.run(form._on_save())
+
+    assert expired == ["sign-in"]
+
+
+# --- RecycleBinViewModel --------------------------------------------------------
+
+
+def test_recycle_bin_refresh_lists_deleted_documents_only():
+    client = MagicMock()
+    deleted = make_document(document_id=3, title="Retirada")
+    deleted.deleted_at = None  # VM does not inspect the flag; the query does
+    client.list_documents.return_value = [deleted]
+    vm = RecycleBinViewModel(client)
+
+    vm.refresh()
+
+    client.list_documents.assert_called_once_with(deleted=True)
+    assert len(vm.documents) == 1
+    assert vm.error_message is None
+
+
+def test_recycle_bin_refresh_api_error_sets_spanish_message():
+    client = MagicMock()
+    client.list_documents.side_effect = ApiError("No se pudo conectar con el servidor.")
+    vm = RecycleBinViewModel(client)
+
+    vm.refresh()
+
+    assert vm.documents == []
+    assert LOAD_ERROR_MESSAGE not in (vm.error_message or "")
+    assert "No se pudo conectar con el servidor." in (vm.error_message or "")
+
+
+def test_recycle_bin_refresh_auth_error_marks_session_expired():
+    client = MagicMock()
+    client.list_documents.side_effect = AuthError("No autenticado.", status_code=401)
+    vm = RecycleBinViewModel(client)
+
+    vm.refresh()
+
+    assert vm.session_expired is True
+
+
+def test_recycle_bin_restore_delegates_to_client():
+    client = MagicMock()
+    client.restore_document.return_value = make_document(document_id=3)
+    vm = RecycleBinViewModel(client)
+
+    document = vm.restore(3)
+
+    client.restore_document.assert_called_once_with(3)
+    assert document.id == 3
+
+
+def test_recycle_bin_restore_auth_error_marks_session_expired():
+    client = MagicMock()
+    client.restore_document.side_effect = AuthError("No autenticado.", status_code=401)
+    vm = RecycleBinViewModel(client)
+
+    with pytest.raises(AuthError):
+        vm.restore(3)
+
+    assert vm.session_expired is True
+
+
+# --- RecycleBinView structure and flows -------------------------------------------
+
+
+def make_deleted_document() -> DocumentOut:
+    document = make_document(document_id=4, title="Obsoleta")
+    document.deleted_at = datetime(2024, 2, 1, 9, 30)
+    return document
+
+
+def test_recycle_bin_view_builds_spanish_controls_and_restore_buttons():
+    client = MagicMock()
+    client.list_documents.return_value = [make_deleted_document()]
+    bin_view = RecycleBinView(client, on_back=lambda: None)
+    bin_view.vm.refresh()
+    view = bin_view.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "Papelera de reciclaje" in joined
+    assert "Obsoleta" in joined
+    assert "Restaurar" in joined
+    assert "Volver al catálogo" in joined
+
+    buttons = [n for n in walk_controls(view) if isinstance(n, ft.FilledButton)]
+    assert len(buttons) == 1
+
+
+def test_recycle_bin_view_empty_state_message():
+    client = MagicMock()
+    client.list_documents.return_value = []
+    bin_view = RecycleBinView(client, on_back=lambda: None)
+    bin_view.vm.refresh()
+    view = bin_view.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert EMPTY_MESSAGE in joined
+
+
+def test_recycle_bin_view_error_state_message():
+    client = MagicMock()
+    client.list_documents.side_effect = ApiError("No se pudo conectar con el servidor.")
+    bin_view = RecycleBinView(client, on_back=lambda: None)
+    bin_view.vm.refresh()
+    view = bin_view.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "No se pudo cargar la papelera." in joined
+    assert "No se pudo conectar con el servidor." in joined
+
+
+def test_recycle_bin_back_button_calls_on_back():
+    calls: list[str] = []
+    client = MagicMock()
+    client.list_documents.return_value = []
+    bin_view = RecycleBinView(client, on_back=lambda: calls.append("back"))
+    view = bin_view.build()
+
+    back_buttons = [
+        n
+        for n in walk_controls(view)
+        if isinstance(n, ft.IconButton) and n.tooltip == "Volver al catálogo"
+    ]
+    assert len(back_buttons) == 1
+    back_buttons[0].on_click()
+    assert calls == ["back"]
+
+
+def test_recycle_bin_restore_click_restores_notices_and_reloads():
+    client = MagicMock()
+    client.list_documents.side_effect = [[make_deleted_document()], []]
+    client.restore_document.return_value = make_document(document_id=4)
+    notices: list[str] = []
+    bin_view = RecycleBinView(client, on_back=lambda: None, on_notice=notices.append)
+    bin_view.vm.refresh()
+    bin_view.build()
+
+    asyncio.run(bin_view._on_restore(make_deleted_document()))
+
+    client.restore_document.assert_called_once_with(4)
+    assert client.list_documents.call_count == 2  # initial + reload
+    assert RESTORED_MESSAGE in notices
+    assert bin_view._rows.controls == []
+
+
+def test_recycle_bin_restore_api_error_notices_spanish_message():
+    client = MagicMock()
+    client.restore_document.side_effect = ApiError("Documento no encontrado.")
+    notices: list[str] = []
+    bin_view = RecycleBinView(client, on_back=lambda: None, on_notice=notices.append)
+
+    asyncio.run(bin_view._on_restore(make_deleted_document()))
+
+    assert any(RESTORE_ERROR_MESSAGE in n and "Documento no encontrado." in n for n in notices)
+
+
+def test_recycle_bin_restore_auth_error_invokes_session_expired():
+    client = MagicMock()
+    client.restore_document.side_effect = AuthError("No autenticado.", status_code=401)
+    expired: list[str] = []
+    bin_view = RecycleBinView(
+        client, on_back=lambda: None, on_session_expired=lambda: expired.append("sign-in")
+    )
+
+    asyncio.run(bin_view._on_restore(make_deleted_document()))
 
     assert expired == ["sign-in"]
