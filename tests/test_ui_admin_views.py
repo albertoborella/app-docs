@@ -27,6 +27,17 @@ from app.ui.views.recycle_bin import (
     RecycleBinView,
     RecycleBinViewModel,
 )
+from app.ui.views.users import (
+    CREATED_MESSAGE,
+    MISSING_CREDENTIALS_MESSAGE,
+    MISSING_USERNAME_MESSAGE,
+    SAVE_ERROR_MESSAGE,
+    UserFormView,
+    UserFormViewModel,
+    UsersView,
+    UsersViewModel,
+)
+from app.ui.views.users import SAVED_MESSAGE as USER_SAVED_MESSAGE
 
 
 def make_user(
@@ -83,7 +94,7 @@ def collect_text_values(control) -> list[str]:
             continue
         if isinstance(node, ft.Text) and isinstance(node.value, str):
             values.append(node.value)
-        if isinstance(node, ft.TextField) and node.label:
+        if isinstance(node, (ft.TextField, ft.Dropdown, ft.Switch)) and node.label:
             values.append(node.label)
         tooltip = getattr(node, "tooltip", None)
         if isinstance(tooltip, str) and tooltip:
@@ -616,5 +627,351 @@ def test_recycle_bin_restore_auth_error_invokes_session_expired():
     )
 
     asyncio.run(bin_view._on_restore(make_deleted_document()))
+
+    assert expired == ["sign-in"]
+
+
+# --- UsersViewModel --------------------------------------------------------------
+
+
+def test_users_refresh_delegates_to_client():
+    client = MagicMock()
+    client.list_users.return_value = [make_user(), make_user(2, "ana", Role.user, False)]
+    vm = UsersViewModel(client)
+
+    vm.refresh()
+
+    client.list_users.assert_called_once_with()
+    assert [u.username for u in vm.users] == ["admin", "ana"]
+    assert vm.error_message is None
+
+
+def test_users_refresh_api_error_sets_spanish_message():
+    client = MagicMock()
+    client.list_users.side_effect = ApiError("No se pudo conectar con el servidor.")
+    vm = UsersViewModel(client)
+
+    vm.refresh()
+
+    assert vm.users == []
+    assert "No se pudo conectar con el servidor." in (vm.error_message or "")
+
+
+def test_users_refresh_auth_error_marks_session_expired():
+    client = MagicMock()
+    client.list_users.side_effect = AuthError("No autenticado.", status_code=401)
+    vm = UsersViewModel(client)
+
+    vm.refresh()
+
+    assert vm.session_expired is True
+
+
+# --- UserFormViewModel ------------------------------------------------------------
+
+
+def test_user_form_view_model_create_calls_create_user():
+    client = MagicMock()
+    client.create_user.return_value = make_user(5, "nueva", Role.user)
+    vm = UserFormViewModel(client)
+
+    user = vm.save(username="nueva", password="secret", role=Role.user, is_active=True)
+
+    client.create_user.assert_called_once_with(username="nueva", password="secret", role=Role.user)
+    client.update_user.assert_not_called()
+    assert user.id == 5
+    assert vm.user is user
+
+
+def test_user_form_view_model_edit_calls_update_user_with_fields():
+    client = MagicMock()
+    existing = make_user(3, "ana", Role.user, is_active=False)
+    client.update_user.return_value = make_user(3, "ana", Role.admin, is_active=True)
+    vm = UserFormViewModel(client, existing)
+
+    vm.save(username="ana", password="newpass", role=Role.admin, is_active=True)
+
+    client.update_user.assert_called_once_with(
+        3, username="ana", password="newpass", role=Role.admin, is_active=True
+    )
+    client.create_user.assert_not_called()
+
+
+def test_user_form_view_model_edit_omits_blank_password():
+    client = MagicMock()
+    client.update_user.return_value = make_user(3)
+    vm = UserFormViewModel(client, make_user(3))
+
+    vm.save(username="ana", password=None, role=Role.user, is_active=False)
+
+    assert client.update_user.call_args.kwargs["password"] is None
+    assert client.update_user.call_args.kwargs["is_active"] is False
+
+
+def test_user_form_view_model_auth_error_marks_session_expired():
+    client = MagicMock()
+    client.create_user.side_effect = AuthError("No autenticado.", status_code=401)
+    vm = UserFormViewModel(client)
+
+    with pytest.raises(AuthError):
+        vm.save(username="x", password="y", role=Role.user, is_active=True)
+
+    assert vm.session_expired is True
+
+
+def test_user_form_view_model_api_error_sets_message():
+    client = MagicMock()
+    client.create_user.side_effect = ApiError("El nombre de usuario ya existe.")
+    vm = UserFormViewModel(client)
+
+    with pytest.raises(ApiError):
+        vm.save(username="x", password="y", role=Role.user, is_active=True)
+
+    assert "El nombre de usuario ya existe." in (vm.error_message or "")
+
+
+# --- UsersView structure -----------------------------------------------------------
+
+
+def test_users_view_builds_spanish_controls_and_rows():
+    client = MagicMock()
+    client.list_users.return_value = [
+        make_user(1, "admin", Role.admin, True),
+        make_user(2, "ana", Role.user, False),
+    ]
+    users_view = UsersView(
+        client, on_back=lambda: None, on_create=lambda: None, on_edit=lambda u: None
+    )
+    users_view.vm.refresh()
+    view = users_view.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "Gestión de cuentas" in joined
+    assert "admin" in joined
+    assert "ana" in joined
+    assert "Administrador" in joined
+    assert "Usuario normal" in joined
+    assert "Inactivo" in joined
+    assert "Editar" in joined
+    assert "Nuevo usuario" in joined
+    assert "Volver al catálogo" in joined
+
+
+def test_users_view_empty_state_message():
+    client = MagicMock()
+    client.list_users.return_value = []
+    users_view = UsersView(
+        client, on_back=lambda: None, on_create=lambda: None, on_edit=lambda u: None
+    )
+    users_view.vm.refresh()
+    view = users_view.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "No hay cuentas de usuario." in joined
+
+
+def test_users_view_error_state_message():
+    client = MagicMock()
+    client.list_users.side_effect = ApiError("No se pudo conectar con el servidor.")
+    users_view = UsersView(
+        client, on_back=lambda: None, on_create=lambda: None, on_edit=lambda u: None
+    )
+    users_view.vm.refresh()
+    view = users_view.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "No se pudo cargar la lista de cuentas." in joined
+
+
+def test_users_view_edit_button_passes_user_to_callback():
+    edited: list[UserOut] = []
+    client = MagicMock()
+    target = make_user(4, "lucia", Role.user)
+    client.list_users.return_value = [target]
+    users_view = UsersView(
+        client, on_back=lambda: None, on_create=lambda: None, on_edit=edited.append
+    )
+    users_view.vm.refresh()
+    view = users_view.build()
+
+    edit_buttons = [
+        n for n in walk_controls(view) if isinstance(n, ft.FilledButton) and n.content
+    ]
+    assert len(edit_buttons) == 1
+    edit_buttons[0].on_click(None)
+    assert edited == [target]
+
+
+def test_users_view_back_and_new_user_buttons_wire_callbacks():
+    calls: list[str] = []
+    client = MagicMock()
+    client.list_users.return_value = []
+    users_view = UsersView(
+        client,
+        on_back=lambda: calls.append("back"),
+        on_create=lambda: calls.append("create"),
+        on_edit=lambda u: None,
+    )
+    view = users_view.build()
+
+    back = [
+        n
+        for n in walk_controls(view)
+        if isinstance(n, ft.IconButton) and n.tooltip == "Volver al catálogo"
+    ]
+    new_user = [
+        n
+        for n in walk_controls(view)
+        if isinstance(n, ft.IconButton) and n.tooltip == "Nuevo usuario"
+    ]
+    assert len(back) == 1 and len(new_user) == 1
+    back[0].on_click()
+    new_user[0].on_click()
+    assert calls == ["back", "create"]
+
+
+# --- UserFormView structure and flows ------------------------------------------------
+
+
+def test_user_form_create_mode_builds_spanish_controls():
+    client = MagicMock()
+    form = UserFormView(client, on_back=lambda: None, on_saved=lambda: None)
+    view = form.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "Crear usuario" in joined
+    assert "Nombre de usuario" in joined
+    assert "Contraseña" in joined
+    assert "Rol" in joined
+    assert "Guardar" in joined
+
+    assert form._active.visible is False  # is_active is edit-only
+
+
+def test_user_form_edit_mode_prefills_and_shows_switch():
+    client = MagicMock()
+    existing = make_user(7, "lucia", Role.admin, is_active=False)
+    form = UserFormView(client, user=existing, on_back=lambda: None, on_saved=lambda: None)
+    view = form.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert "Editar usuario" in joined
+    assert form._username.value == "lucia"
+    assert form._role.value == "admin"
+    assert form._active.value is False
+    assert form._active.visible is True
+    assert form._password.hint_text is not None
+
+
+def test_user_form_save_create_requires_password():
+    client = MagicMock()
+    notices: list[str] = []
+    form = UserFormView(
+        client,
+        on_back=lambda: None,
+        on_saved=lambda: notices.append("saved"),
+        on_notice=notices.append,
+    )
+    form._username.value = "nueva"
+    form._password.value = ""
+
+    asyncio.run(form._on_save())
+
+    client.create_user.assert_not_called()
+    assert MISSING_CREDENTIALS_MESSAGE in (form._error_text.value or "")
+    assert "saved" not in notices
+
+
+def test_user_form_save_create_requires_username():
+    client = MagicMock()
+    form = UserFormView(client, on_back=lambda: None, on_saved=lambda: None)
+    form._username.value = "  "
+    form._password.value = "secret"
+
+    asyncio.run(form._on_save())
+
+    client.create_user.assert_not_called()
+    assert MISSING_USERNAME_MESSAGE in (form._error_text.value or "")
+
+
+def test_user_form_save_create_sends_payload_and_navigates_back():
+    client = MagicMock()
+    client.create_user.return_value = make_user(9, "nueva", Role.admin)
+    calls: list[str] = []
+    notices: list[str] = []
+    form = UserFormView(
+        client,
+        on_back=lambda: None,
+        on_saved=lambda: calls.append("saved"),
+        on_notice=notices.append,
+    )
+    form._username.value = "nueva"
+    form._password.value = "secret"
+    form._role.value = "admin"
+
+    asyncio.run(form._on_save())
+
+    client.create_user.assert_called_once_with(
+        username="nueva", password="secret", role=Role.admin
+    )
+    assert CREATED_MESSAGE in notices
+    assert calls == ["saved"]
+
+
+def test_user_form_save_edit_sends_is_active_and_notices():
+    client = MagicMock()
+    client.update_user.return_value = make_user(3, "ana", Role.user, is_active=True)
+    notices: list[str] = []
+    calls: list[str] = []
+    form = UserFormView(
+        client,
+        user=make_user(3, "ana", Role.user, is_active=False),
+        on_back=lambda: None,
+        on_saved=lambda: calls.append("saved"),
+        on_notice=notices.append,
+    )
+    form._active.value = True
+
+    asyncio.run(form._on_save())
+
+    kwargs = client.update_user.call_args.kwargs
+    assert kwargs["is_active"] is True
+    assert kwargs["role"] == Role.user
+    assert USER_SAVED_MESSAGE in notices
+    assert calls == ["saved"]
+
+
+def test_user_form_save_api_error_shows_duplicate_message_inline():
+    client = MagicMock()
+    client.create_user.side_effect = ApiError("El nombre de usuario ya existe.")
+    notices: list[str] = []
+    form = UserFormView(
+        client, on_back=lambda: None, on_saved=lambda: None, on_notice=notices.append
+    )
+    form._username.value = "repetida"
+    form._password.value = "secret"
+
+    asyncio.run(form._on_save())
+
+    error = form._error_text.value or ""
+    assert SAVE_ERROR_MESSAGE in error
+    assert "ya existe" in error
+    assert notices == []
+
+
+def test_user_form_session_expired_invokes_callback():
+    client = MagicMock()
+    client.create_user.side_effect = AuthError("No autenticado.", status_code=401)
+    expired: list[str] = []
+    form = UserFormView(
+        client,
+        on_back=lambda: None,
+        on_saved=lambda: None,
+        on_session_expired=lambda: expired.append("sign-in"),
+    )
+    form._username.value = "x"
+    form._password.value = "y"
+
+    asyncio.run(form._on_save())
 
     assert expired == ["sign-in"]
