@@ -78,7 +78,7 @@ class SignInView:
             vertical_alignment=ft.MainAxisAlignment.CENTER,
             padding=40,
             controls=[
-                ft.Text("Gestor documentario lácteo", size=22, weight=ft.FontWeight.BOLD),
+                ft.Text("Documentos Inocuidad", size=22, weight=ft.FontWeight.BOLD),
                 ft.Text("Inicio de sesión", size=16),
                 ft.Column(
                     width=320,

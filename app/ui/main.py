@@ -23,7 +23,7 @@ from app.ui.api_client import ApiClient  # noqa: E402
 from app.ui.views.catalog import CatalogView  # noqa: E402
 from app.ui.views.sign_in import SignInView  # noqa: E402
 
-APP_TITLE = "Gestor documentario lácteo"
+APP_TITLE = "Normativas Inocuidad Productos Lacteos"
 
 
 def main(page: ft.Page) -> None:
