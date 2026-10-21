@@ -50,7 +50,7 @@ class SignInView:
         self,
         client: ApiClient,
         *,
-        on_success: Callable[[], None],
+        on_success: Callable[[UserOut], None],
     ) -> None:
         self.client = client
         self.on_success = on_success
@@ -102,7 +102,8 @@ class SignInView:
             self.error("Complete usuario y contraseña.")
             return
         if self.vm.submit(username, password):
-            self.on_success()
+            if self.vm.user is not None:
+                self.on_success(self.vm.user)
             return
         self.error(self.vm.error_message or DEFAULT_CREDENTIALS_ERROR)
 

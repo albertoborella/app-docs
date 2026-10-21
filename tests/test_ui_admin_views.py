@@ -10,6 +10,16 @@ import pytest
 from app.api.schemas import DocumentOut, UserOut
 from app.db.models import Role
 from app.ui.api_client import ApiError, AuthError
+from app.ui.views.catalog import (
+    EDIT_LABEL,
+    NEW_DOCUMENT_TOOLTIP,
+    RECYCLE_BIN_TOOLTIP,
+    REMOVE_ERROR_MESSAGE,
+    REMOVE_LABEL,
+    REMOVED_MESSAGE,
+    USERS_TOOLTIP,
+    CatalogView,
+)
 from app.ui.views.document_form import (
     INVALID_DATE_MESSAGE,
     MISSING_FIELDS_MESSAGE,
@@ -27,6 +37,7 @@ from app.ui.views.recycle_bin import (
     RecycleBinView,
     RecycleBinViewModel,
 )
+from app.ui.views.sign_in import SignInView
 from app.ui.views.users import (
     CREATED_MESSAGE,
     MISSING_CREDENTIALS_MESSAGE,
@@ -975,3 +986,155 @@ def test_user_form_session_expired_invokes_callback():
     asyncio.run(form._on_save())
 
     assert expired == ["sign-in"]
+
+
+# --- Catalog admin entrance ---------------------------------------------------------
+
+
+def make_catalog(is_admin: bool = False, **kwargs) -> CatalogView:
+    client = MagicMock()
+    client.list_documents.return_value = []
+    return CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=is_admin,
+        **kwargs,
+    )
+
+
+def test_catalog_hides_admin_entrance_for_normal_user():
+    catalog = make_catalog(is_admin=False)
+    catalog.vm.refresh()
+    view = catalog.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert NEW_DOCUMENT_TOOLTIP not in joined
+    assert RECYCLE_BIN_TOOLTIP not in joined
+    assert USERS_TOOLTIP not in joined
+    assert EDIT_LABEL not in joined
+    assert REMOVE_LABEL not in joined
+
+
+def test_catalog_shows_admin_entrance_for_admin():
+    catalog = make_catalog(
+        is_admin=True,
+        on_new_document=lambda: None,
+        on_edit_document=lambda d: None,
+        on_open_recycle_bin=lambda: None,
+        on_open_users=lambda: None,
+    )
+    catalog.vm.refresh()
+    view = catalog.build()
+
+    joined = " | ".join(collect_text_values(view))
+    assert NEW_DOCUMENT_TOOLTIP in joined
+    assert RECYCLE_BIN_TOOLTIP in joined
+    assert USERS_TOOLTIP in joined
+
+
+def test_catalog_admin_row_has_edit_and_remove_buttons():
+    catalog = make_catalog(is_admin=True, on_edit_document=lambda d: None)
+    row = catalog._document_row(make_document())
+
+    buttons = [n for n in walk_controls(row) if isinstance(n, ft.FilledButton)]
+    labels = " | ".join(collect_text_values(row))
+    assert EDIT_LABEL in labels
+    assert REMOVE_LABEL in labels
+    assert len(buttons) == 3  # Descargar/Abrir + Editar + Quitar
+
+
+def test_catalog_admin_appbar_buttons_wire_navigation_callbacks():
+    calls: list[str] = []
+    catalog = make_catalog(
+        is_admin=True,
+        on_new_document=lambda: calls.append("new"),
+        on_edit_document=lambda d: None,
+        on_open_recycle_bin=lambda: calls.append("bin"),
+        on_open_users=lambda: calls.append("users"),
+    )
+    view = catalog.build()
+
+    by_tooltip = {
+        n.tooltip: n
+        for n in walk_controls(view)
+        if isinstance(n, ft.IconButton) and n.tooltip
+    }
+    by_tooltip[NEW_DOCUMENT_TOOLTIP].on_click()
+    by_tooltip[RECYCLE_BIN_TOOLTIP].on_click()
+    by_tooltip[USERS_TOOLTIP].on_click()
+    assert calls == ["new", "bin", "users"]
+
+
+def test_catalog_admin_edit_button_opens_document():
+    edited: list[DocumentOut] = []
+    target = make_document(document_id=8)
+    catalog = make_catalog(is_admin=True, on_edit_document=edited.append)
+    row = catalog._document_row(target)
+
+    edit_buttons = [
+        n
+        for n in walk_controls(row)
+        if isinstance(n, ft.FilledButton) and n.content and n.icon == ft.Icons.EDIT
+    ]
+    assert len(edit_buttons) == 1
+    edit_buttons[0].on_click(None)
+    assert edited == [target]
+
+
+def test_catalog_remove_soft_deletes_notices_and_reloads():
+    client = MagicMock()
+    client.list_documents.side_effect = [[make_document()], []]
+    notices: list[str] = []
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+        on_edit_document=lambda d: None,
+        on_notice=notices.append,
+    )
+    catalog.vm.refresh()
+    catalog.build()
+
+    asyncio.run(catalog._on_remove(make_document(document_id=5)))
+
+    client.delete_document.assert_called_once_with(5)
+    assert client.list_documents.call_count == 2  # initial + reload
+    assert REMOVED_MESSAGE in notices
+
+
+def test_catalog_remove_api_error_notices_spanish_message():
+    client = MagicMock()
+    client.delete_document.side_effect = ApiError("Documento no encontrado.")
+    notices: list[str] = []
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+        on_edit_document=lambda d: None,
+        on_notice=notices.append,
+    )
+
+    asyncio.run(catalog._on_remove(make_document()))
+
+    assert any(REMOVE_ERROR_MESSAGE in n and "Documento no encontrado." in n for n in notices)
+
+
+# --- Sign-in hands the signed-in user to the shell ------------------------------------
+
+
+def test_sign_in_success_passes_user_to_callback():
+    client = MagicMock()
+    client.login.return_value = make_user(2, "admin", Role.admin)
+    received: list[UserOut] = []
+    sign_in = SignInView(client, on_success=received.append)
+    sign_in._username.value = "admin"
+    sign_in._password.value = "secret"
+
+    sign_in._on_submit()
+
+    assert len(received) == 1
+    assert received[0].username == "admin"
+    assert received[0].role == Role.admin

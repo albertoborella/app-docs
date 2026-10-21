@@ -19,6 +19,13 @@ DOWNLOAD_DONE_MESSAGE = "Archivo descargado."
 DOWNLOAD_CANCELLED_MESSAGE = "Descarga cancelada."
 DOWNLOAD_LABEL = "Descargar"
 OPEN_LABEL = "Abrir"
+EDIT_LABEL = "Editar"
+REMOVE_LABEL = "Quitar"
+NEW_DOCUMENT_TOOLTIP = "Nuevo documento"
+RECYCLE_BIN_TOOLTIP = "Papelera de reciclaje"
+USERS_TOOLTIP = "Gestión de cuentas"
+REMOVED_MESSAGE = "Documento retirado del catálogo."
+REMOVE_ERROR_MESSAGE = "No se pudo retirar el documento."
 OPEN_NOTICE_MESSAGE = (
     "El documento se abrió en una pestaña nueva. "
     "Use el botón atrás del navegador o cambie de pestaña para volver al catálogo."
@@ -46,6 +53,9 @@ class CatalogViewModel:
     def download(self, document_id: int) -> bytes:
         return self.client.download_file(document_id)
 
+    def remove(self, document_id: int) -> None:
+        self.client.delete_document(document_id)
+
 
 def _blank_to_none(value: str | None) -> str | None:
     if value is None:
@@ -65,12 +75,22 @@ class CatalogView:
         file_picker: ft.FilePicker,
         on_notice: Callable[[str], None] | None = None,
         web: bool = False,
+        is_admin: bool = False,
+        on_new_document: Callable[[], None] | None = None,
+        on_edit_document: Callable[[DocumentOut], None] | None = None,
+        on_open_recycle_bin: Callable[[], None] | None = None,
+        on_open_users: Callable[[], None] | None = None,
     ) -> None:
         self.client = client
         self.on_sign_out = on_sign_out
         self.file_picker = file_picker
         self.on_notice = on_notice
         self.web = web
+        self.is_admin = is_admin
+        self.on_new_document = on_new_document
+        self.on_edit_document = on_edit_document
+        self.on_open_recycle_bin = on_open_recycle_bin
+        self.on_open_users = on_open_users
         self.vm = CatalogViewModel(client)
         self._filter_task: asyncio.Task | None = None
 
@@ -91,13 +111,7 @@ class CatalogView:
             route="/catalog",
             appbar=ft.AppBar(
                 title=ft.Text("Catálogo de documentos"),
-                actions=[
-                    ft.IconButton(
-                        icon=ft.Icons.LOGOUT,
-                        tooltip="Cerrar sesión",
-                        on_click=self._on_sign_out_click,
-                    )
-                ],
+                actions=self._app_bar_actions(),
             ),
             padding=24,
             controls=[
@@ -115,6 +129,37 @@ class CatalogView:
                 ft.ListView(expand=True, spacing=8, controls=[self._rows]),
             ],
         )
+
+    def _app_bar_actions(self) -> list[ft.Control]:
+        actions: list[ft.Control] = []
+        if self.is_admin:
+            actions.extend(
+                [
+                    ft.IconButton(
+                        icon=ft.Icons.ADD,
+                        tooltip=NEW_DOCUMENT_TOOLTIP,
+                        on_click=self._on_new_document_click,
+                    ),
+                    ft.IconButton(
+                        icon=ft.Icons.DELETE,
+                        tooltip=RECYCLE_BIN_TOOLTIP,
+                        on_click=self._on_recycle_bin_click,
+                    ),
+                    ft.IconButton(
+                        icon=ft.Icons.PEOPLE,
+                        tooltip=USERS_TOOLTIP,
+                        on_click=self._on_users_click,
+                    ),
+                ]
+            )
+        actions.append(
+            ft.IconButton(
+                icon=ft.Icons.LOGOUT,
+                tooltip="Cerrar sesión",
+                on_click=self._on_sign_out_click,
+            )
+        )
+        return actions
 
     def _rebuild_rows(self) -> None:
         if self.vm.error_message:
@@ -154,11 +199,30 @@ class CatalogView:
                                 ),
                             ],
                         ),
-                        self._row_button(document),
+                        self._row_actions(document),
                     ],
                 ),
             )
         )
+
+    def _row_actions(self, document: DocumentOut) -> ft.Control:
+        buttons: list[ft.Control] = [self._row_button(document)]
+        if self.is_admin:
+            buttons.append(
+                ft.FilledButton(
+                    icon=ft.Icons.EDIT,
+                    content=ft.Text(EDIT_LABEL),
+                    on_click=functools.partial(self._on_edit_click, document),
+                )
+            )
+            buttons.append(
+                ft.FilledButton(
+                    icon=ft.Icons.DELETE,
+                    content=ft.Text(REMOVE_LABEL),
+                    on_click=functools.partial(self._on_remove, document),
+                )
+            )
+        return ft.Row(spacing=8, wrap=True, controls=buttons)
 
     def _row_button(self, document: DocumentOut) -> ft.FilledButton:
         if self.web:
@@ -226,6 +290,35 @@ class CatalogView:
         except ApiError:
             pass
         self.on_sign_out()
+
+    def _on_new_document_click(self, _event: ft.ControlEvent | None = None) -> None:
+        if self.on_new_document is not None:
+            self.on_new_document()
+
+    def _on_edit_click(
+        self, document: DocumentOut, _event: ft.ControlEvent | None = None
+    ) -> None:
+        if self.on_edit_document is not None:
+            self.on_edit_document(document)
+
+    def _on_recycle_bin_click(self, _event: ft.ControlEvent | None = None) -> None:
+        if self.on_open_recycle_bin is not None:
+            self.on_open_recycle_bin()
+
+    def _on_users_click(self, _event: ft.ControlEvent | None = None) -> None:
+        if self.on_open_users is not None:
+            self.on_open_users()
+
+    async def _on_remove(
+        self, document: DocumentOut, _event: ft.ControlEvent | None = None
+    ) -> None:
+        try:
+            await asyncio.to_thread(self.vm.remove, document.id)
+        except ApiError as exc:
+            self._notice(f"{REMOVE_ERROR_MESSAGE} {exc}")
+            return
+        self._notice(REMOVED_MESSAGE)
+        await self._apply_filters()
 
     def _on_open_click(self, _event: ft.ControlEvent | None = None) -> None:
         self._notice(OPEN_NOTICE_MESSAGE)
