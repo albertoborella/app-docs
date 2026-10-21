@@ -9,7 +9,12 @@ import pytest
 from app.api.schemas import DocumentOut, UserOut
 from app.db.models import Role
 from app.ui.api_client import ApiError, AuthError, NotFoundError
-from app.ui.views.catalog import FILTER_DEBOUNCE_SECONDS, CatalogView, CatalogViewModel
+from app.ui.views.catalog import (
+    FILTER_DEBOUNCE_SECONDS,
+    OPEN_NOTICE_MESSAGE,
+    CatalogView,
+    CatalogViewModel,
+)
 from app.ui.views.sign_in import SignInView, SignInViewModel
 
 BOOTSTRAP_HINT = "python -m app.cli create-admin"
@@ -355,7 +360,7 @@ def test_web_mode_row_button_opens_url_in_new_tab(monkeypatch):
     buttons = [n for n in walk_controls(row) if isinstance(n, ft.FilledButton)]
     assert len(buttons) == 1
     button = buttons[0]
-    assert button.on_click is None  # no client-side byte fetch
+    assert button.on_click == catalog._on_open_click  # notice only, no byte fetch
     assert isinstance(button.action, _StubOpenUrl)
     assert captured["url"] == (
         "http://192.168.0.83:8550/api/v1/documents/9/file?token=tok&inline=true"
@@ -363,6 +368,22 @@ def test_web_mode_row_button_opens_url_in_new_tab(monkeypatch):
     assert captured["target"] == ft.UrlTarget.BLANK
     assert "Abrir" in collect_text_values(row)
     assert button.icon == ft.Icons.OPEN_IN_NEW
+
+
+def test_web_mode_open_button_notices_how_to_come_back():
+    client = MagicMock()
+    notices: list[str] = []
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        on_notice=notices.append,
+        web=True,
+    )
+
+    catalog._on_open_click()
+
+    assert notices == [OPEN_NOTICE_MESSAGE]
 
 
 def test_default_mode_is_desktop_download_button():

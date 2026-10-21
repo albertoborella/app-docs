@@ -19,6 +19,10 @@ DOWNLOAD_DONE_MESSAGE = "Archivo descargado."
 DOWNLOAD_CANCELLED_MESSAGE = "Descarga cancelada."
 DOWNLOAD_LABEL = "Descargar"
 OPEN_LABEL = "Abrir"
+OPEN_NOTICE_MESSAGE = (
+    "El documento se abrió en una pestaña nueva. "
+    "Use el botón atrás del navegador o cambie de pestaña para volver al catálogo."
+)
 SAVE_DIALOG_TITLE = "Guardar archivo"
 FILTER_DEBOUNCE_SECONDS = 0.3
 
@@ -161,7 +165,11 @@ class CatalogView:
             return ft.FilledButton(
                 icon=ft.Icons.OPEN_IN_NEW,
                 content=ft.Text(OPEN_LABEL),
+                # Client-side open stays inside the tap gesture (iOS Safari ignores
+                # window.open after a Python round trip); on_click only announces
+                # how to come back once the new tab is already open.
                 action=ft.OpenUrl(self._file_url(document), target=ft.UrlTarget.BLANK),
+                on_click=self._on_open_click,
             )
         return ft.FilledButton(
             icon=ft.Icons.DOWNLOAD,
@@ -218,6 +226,9 @@ class CatalogView:
         except ApiError:
             pass
         self.on_sign_out()
+
+    def _on_open_click(self, _event: ft.ControlEvent | None = None) -> None:
+        self._notice(OPEN_NOTICE_MESSAGE)
 
     async def _on_download(
         self, document: DocumentOut, _event: ft.ControlEvent | None = None
