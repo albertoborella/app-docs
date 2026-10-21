@@ -46,6 +46,14 @@ def test_force_creates_additional_admin(admin_env):
     assert len(_admin_rows(admin_env)) == 2
 
 
+def test_force_with_existing_username_fails_cleanly(admin_env, capsys):
+    assert main(["create-admin", "--username", "admin"]) == 0
+    assert main(["create-admin", "--username", "admin", "--force"]) == 1
+
+    assert "el nombre de usuario ya existe" in capsys.readouterr().err
+    assert len(_admin_rows(admin_env)) == 1
+
+
 def test_password_argv_flag_is_rejected(tmp_path, monkeypatch):
     monkeypatch.setenv("DOCMANAGER_DB_PATH", str(tmp_path / "test.db"))
 

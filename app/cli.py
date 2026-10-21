@@ -15,6 +15,10 @@ class AdminAlreadyExistsError(RuntimeError):
     pass
 
 
+class UsernameAlreadyExistsError(RuntimeError):
+    pass
+
+
 def create_admin(*, username: str, password: str, force: bool = False) -> User:
     engine = create_db_engine(get_settings().db_path)
     SQLModel.metadata.create_all(engine)
@@ -23,6 +27,9 @@ def create_admin(*, username: str, password: str, force: bool = False) -> User:
         existing = session.exec(select(User).where(User.role == Role.admin)).first()
         if existing is not None and not force:
             raise AdminAlreadyExistsError
+        taken = session.exec(select(User).where(User.username == username)).first()
+        if taken is not None:
+            raise UsernameAlreadyExistsError
         now = utc_now()
         user = User(
             username=username,
@@ -42,7 +49,11 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p_create = sub.add_parser("create-admin")
     p_create.add_argument("--username", help="Nombre de usuario del administrador")
-    p_create.add_argument("--force", action="store_true")
+    p_create.add_argument(
+        "--force",
+        action="store_true",
+        help="Crear un administrador adicional aunque ya exista uno (no pisa el existente)",
+    )
     args = parser.parse_args(argv)
 
     if args.command == "create-admin":
@@ -52,8 +63,13 @@ def main(argv: list[str] | None = None) -> int:
             create_admin(username=username, password=password, force=args.force)
         except AdminAlreadyExistsError:
             print(
-                "Error: ya existe una cuenta de administrador. Use --force.", file=sys.stderr
+                "Error: ya existe una cuenta de administrador."
+                " Use --force para crear un administrador adicional.",
+                file=sys.stderr,
             )
+            return 1
+        except UsernameAlreadyExistsError:
+            print("Error: el nombre de usuario ya existe.", file=sys.stderr)
             return 1
         print("Administrador creado correctamente.")
         return 0
