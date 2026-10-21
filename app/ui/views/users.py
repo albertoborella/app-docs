@@ -185,7 +185,6 @@ class UsersView:
                 padding=12,
                 content=ft.Row(
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    wrap=True,
                     controls=[
                         ft.Column(
                             expand=True,

@@ -1138,3 +1138,36 @@ def test_sign_in_success_passes_user_to_callback():
     assert len(received) == 1
     assert received[0].username == "admin"
     assert received[0].role == Role.admin
+
+
+def test_admin_list_rows_do_not_use_wrapping_row():
+    """Flet 1.0.4 renders Row(wrap=True) with a Column(expand=True) child inside a
+    Card as an opaque surface with no visible content (verified in a real browser:
+    the whole list painted as a single grey block). The catalog row has never used
+    wrap on the outer Row — admin list rows must match it."""
+    client = MagicMock()
+    client.list_users.return_value = [make_user(1, "admin", Role.admin, True)]
+    users_view = UsersView(
+        client, on_back=lambda: None, on_create=lambda: None, on_edit=lambda u: None
+    )
+    users_view.vm.refresh()
+    users_view.build()
+
+    assert len(users_view._rows.controls) == 1
+    card = users_view._rows.controls[0]
+    row = card.content.content
+    assert isinstance(row, ft.Row)
+    assert not row.wrap
+
+    bin_client = MagicMock()
+    bin_client.list_documents.return_value = [
+        make_document(1, title="Norma", issuing_body="Org")
+    ]
+    bin_view = RecycleBinView(bin_client, on_back=lambda: None)
+    bin_view.vm.refresh()
+    bin_view.build()
+
+    assert len(bin_view._rows.controls) == 1
+    bin_row = bin_view._rows.controls[0].content.content
+    assert isinstance(bin_row, ft.Row)
+    assert not bin_row.wrap
