@@ -201,3 +201,6 @@ Mirá, en el desktop, anda todo bien pero al querer probar web, corriendo desde 
 
 Ok, ahora parece andar bien, pero veo lo siguiente, cuando se corre en web, o lo que sería igual en caso de movil o tablet, al loguearse se ve una lista de los documentos, se puede filtrar y abrir uno pero ya sea cuando se abre uno o se filtra, al cambiar de pantalla deberíamos tener un boton o link para volver al listado o pantalla anterior, sobre todo al tener abierto un documento y querer regresar al listado. Se entiende?
 
+Ok, esto anda muy bien. Creo que ahora lo que deberias hacer es un admin que solo lo pueda ver el administrador y lo ideal sería que se utilice desde la web. El ojetivo de este admin seria, crear usuarios con rol de superadmin o normal. Tambien el rol de superadmin podra crear documentos, subir pdf, docs, etc, modificar documentos y eliminar documentos.
+
+Quisiera que analices la ultima sesion y a partir de ahí continuemos. Creo que deberiamos seguir con el admin como te comente en pronpts anteriores.
