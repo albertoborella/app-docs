@@ -14,4 +14,190 @@ Backend: Python, FastAPI, SQLModel. La sintaxis no debe utilizar "option" sino l
 Base de datos: SQLite3
 Frontend: Flet (escritorio, movil y web)
 
+Una cuenta desactivada se puede reactivar editándola
+El conflicto lo resolvemos con Flet movil adentro que e lo que recomiendas
+
+Me parece que para comenzar está todo bastante bien. Si luego con el desarrollo de la aplicación vemos que hay algo que en la documentación está de otra manera, en ese momento modificariamos la documentación. Se entiende?
+
+Creo que es momento, a menos que vos creas que aún no, de que empecemos a desarrollar el backend con FastAPI y SQLModel, con las restricciones de sintaxis que ya hemos indicado en las docs, que serían sin Option, reemplazando esa sintaxis por | None. Estás de acuerdo?
+
+Diría que hagamos rerge directo a main, si estás de acuerdo.
+
+Bien, ahora arranquemos con la phase 2 de Auth & User API 
+
+Dale, arranquemos la fase 3
+
+Si mergemos
+
+Sigamos con la Phase 4
+
+Quisiera que continuemos pero antes quisiera probar los endpoint que tenemos. Cómo llamo al backend?
+
+Mirá, si aún no lo has escrito en la documentacion, quiero que escribas todo lo que me acabas de pasar para poder correr el backend y tambien el script para crrear el administrador. Y indicame tambien en que lugar de la /docs, lo vas a escribir.
+
+Me dirias como, desde el backend poder cargar un documento y el archivo correspondiente (.pdf)?
+
+Bueno, creo que llegamos al momento de que todo este backend que hemos construido, lo corramos desde el frontend que creo que estamos en condiciones de construir, si te parece bien, teniendo en cuenta el stack que está indicado en la docs/
+
+Antes de comenzar la fase 6, quisiera que me indiques y documentes como correr la aplicacion en el frontend, de manera que podamos ir probando y ajustando UI, con los colores et.
+
+veo en el frontend un area tipo sidebar color salmon, que tiene una leyenda que dice Unknown control: FilePicker. No debería existir ni la leyenda ni ese area tipo sidebar.
+
+Está funcionando bastante bien, solo que quisiera lo siguiente, En cuanto a los filtros que veo hay un input "Buscar" que trae por palabras que contiene el título del documentp. Eso está muy bien. Tambien hay dos input que los podemos dejar aunque no son de mucha utilidad ya que el llamado Tipo de documento hay que colocar exactamente todo como se cargó, sería mas util si tambien ese filtro trae todo lo que se encuentra a medida que se va escribiendo. Ejemplo, si el documento en Tipo de documento se cargó como "Circular 2761 B" y se filtra como 2761, lo muestre. Si se filtra colocando circular, traiga todos los documentos que en ese campo tengan la palabra circular. El otro filtro existente es Órgano emisor, pero no hay un campo en la db organo emisor, y tampoco en el endpoint para cargar documento. Quisiera también agregar 2 campos mas, uno que sea país, para poder hacer busquedas de documentos que refieran a normativas de un determinado país, ya que debemos tener en cuenta a la hora de exportar a ese país, y otro campo debe ser tema que entonces podríamos filtrar por tema, por ejemplo documentos del tema "agua", no traería todos los documentos cargados referentes al tema "agua". Se entiende?
+
+Al volver a cargar el front y el backend, me muestra todos los input de filtros pero abajo dice en rojo "No se pudo cargar el catálogo. No se pudo completar la operacion" y el error en consola es el siguiente:  INFO:     127.0.0.1:59136 - "GET /api/v1/documents HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1953, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 1192, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: no such column: documents.country
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2809, in app
+    await route.handle(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1837, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2892, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1863, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1326, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/app/api/routes/documents.py", line 26, in list_documents
+    documents = document_service.list_documents(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/app/services/document_service.py", line 38, in list_documents
+    return list(db.exec(stmt.order_by(Document.id)).all())
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlmodel/orm/session.py", line 80, in exec
+    results = super().execute(
+              ^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2473, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2363, in _execute_internal
+    compile_state_cls.orm_execute_statement(
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 316, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1458, in execute
+    return meth(
+           ^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 533, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1678, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1832, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1972, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2342, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1953, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/aborella/app-docs/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 1192, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: documents.country
+[SQL: SELECT documents.id, documents.title, documents.issuing_body, documents.description, documents.document_type, documents.country, documents.topic, documents.issued_on, documents.deleted_at, documents.created_at, documents.updated_at 
+FROM documents 
+WHERE documents.deleted_at IS NULL ORDER BY documents.id]
+(Background on this error at: https://sqlalche.me/e/21/e3q8)
+
+Hay un error en los filtros a excepcion del input "Buscar" que busca por palabras del título (eso está perfecto), los otros cuatro no filtran, en cualquiera si coloco una letra cualquiera me trae el documento que está cargado y si coloco una segunda letra cualquiera ya lo saca del listado. Tampoco se descarga el documento con el boton Descargar. Mirá, si es factible, me gustaría que en el mismo input de "Buscar" que si coloco las palabras que estan en los otros campos, por ejemplo "Argentina" me traiga todas las normativas que en algun de los campos(cualquiera sea, tengan la palabra Argentina, o si coloco por ejemplo "Circular", me traiga todos los documentos que en alguno de los campos tenga la palabra "Circular"). Eso es posible? Sino hay mucho que cambiar, lo dejamos como está pero funcionando bien. 
+
+Mirá, esto parece funcionar bastante bien, pero lo pruebo en local en la notebook. Como podemos hacer para ver en el movil, ya que cuando pido que habra o ver un documento, se tendría que abrir en el movil. Se entiende??
+
+Mirá, he cargado el backend sin inconveniente utilizando uv run uvicorn app.main:app --reload --host 0.0.0.0 , pero al querer hacer lo propio con el frontend en otra terminal, utilizando uv run flet run -r app/ui , muestra solamente el logo de Flet. O sea que no abre la pantalla de inicio de sesion y poder loguearse.
+
+Esto es lo que me sale en la terminal, y se abrío el fron con la pantalla de inicio de sesion.
+^Caborella@aborella-Aspire-E5-575:~/app-docs$ uv run flet run -r -v app/ui
+INFO:flet:Starting up UDS server on /tmp/AVBWDdWr5Z
+INFO:flet:Flet app has started...
+INFO:flet_desktop:Starting Flet View app...
+INFO:flet_desktop:Flet client found in cache: /home/aborella/.flet/client/flet-desktop-light-1.0.4
+INFO:flet:App session started
+
+al cerrar la ventana de Gestor documentario lacteo, se cerró todo y en la terminal se observa lo siguiente:
+aborella@aborella-Aspire-E5-575:~/app-docs$ uv run flet run -r -v app/ui
+INFO:flet:Starting up UDS server on /tmp/AVBWDdWr5Z
+INFO:flet:Flet app has started...
+INFO:flet_desktop:Starting Flet View app...
+INFO:flet_desktop:Flet client found in cache: /home/aborella/.flet/client/flet-desktop-light-1.0.4
+INFO:flet:App session started
+INFO:httpx:HTTP Request: POST http://127.0.0.1:8000/api/v1/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://127.0.0.1:8000/api/v1/documents "HTTP/1.1 200 OK"
+embedder.cc (2603): 'FlutterEngineRemoveView' returned 'kInvalidArguments'. Remove view info was invalid. The implicit view cannot be removed.
+INFO:flet:Session was garbage collected: r3o7He5fmHdPHHNL
+
+** (com.appveyor.flet:19746): WARNING **: 15:35:54.478: Attempted to set message handler on an FlBinaryMessenger without an engine
+
+** (com.appveyor.flet:19746): WARNING **: 15:35:54.478: Attempted to set message handler on an FlBinaryMessenger without an engine
+aborella@aborella-Aspire-E5-575:~/app-docs$ 
+
+Mirá, en el desktop, anda todo bien pero al querer probar web, corriendo desde uv run flet run -r -w --host "*" -p 8550 app/ui, se abre en el puerto 8550 pero no trae la pagina de login sino que queda en el centro el login de flet.
+
+Ok, ahora parece andar bien, pero veo lo siguiente, cuando se corre en web, o lo que sería igual en caso de movil o tablet, al loguearse se ve una lista de los documentos, se puede filtrar y abrir uno pero ya sea cuando se abre uno o se filtra, al cambiar de pantalla deberíamos tener un boton o link para volver al listado o pantalla anterior, sobre todo al tener abierto un documento y querer regresar al listado. Se entiende?
 
