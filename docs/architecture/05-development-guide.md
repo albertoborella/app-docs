@@ -24,9 +24,19 @@ uv run python -m app.cli create-admin --username admin
 
 - La contraseña se ingresa oculta por consola (`getpass`); no se pasa por argumentos.
 - Si omitís `--username`, te lo pide de forma interactiva.
-- Si ya existe un administrador, el comando falla. Para crear una cuenta administradora adicional (múltiples admins, ADR-006), usá `--force`.
+- Si ya existe un administrador, el comando se niega y no toca nada (ver siguiente sección).
 
 **Importante — el orden importa:** este comando ejecuta `create_all` y crea las tablas en `var/app.db`. El arranque de la app todavía no crea el esquema (fase pendiente en `app/main.py`), así que ejecutalo al menos una vez antes de usar la API; si no, las consultas fallan porque las tablas no existen.
+
+### Más de un administrador
+
+Para agregar **otro** administrador (múltiples admins, ADR-006), usá `--force`:
+
+```bash
+uv run python -m app.cli create-admin --username ana --force
+```
+
+`--force` solo saltea la guarda de "ya existe un admin": crea un usuario **nuevo** con rol admin y no modifica ni borra al existente. Si el nombre de usuario ya está tomado, el comando falla con `Error: el nombre de usuario ya existe.` (mismo criterio que la API, que responde 409). Alternativa con una sesión de admin ya iniciada: `POST /api/v1/users` con `"role": "admin"`.
 
 ## Arrancar el backend
 
@@ -133,7 +143,7 @@ Todo lo que sigue se entiende con este esquema:
 
 | Desde dónde entrás | Comando / URL | Modo |
 | --- | --- | --- |
-| Ventana nativa en la notebook | `uv run flet run -r app/ui` | escritorio |
+| Ventana nativa en la notebook | `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` | escritorio |
 | Navegador de la notebook | `http://localhost:8550` (con la UI en `--web`) | web |
 | Navegador del celular, misma Wi-Fi | `http://<IP-de-la-notebook>:8550` (con la UI en `--web`) | web |
 
@@ -142,7 +152,7 @@ En escritorio el botón de cada fila es "Descargar" (diálogo de guardado); en w
 ### Camino rápido
 
 1. Terminal 1 — backend: `uv run uvicorn app.main:app --reload`
-2. Terminal 2 — frontend (desde la raíz del proyecto): `uv run flet run -r app/ui`
+2. Terminal 2 — frontend (desde la raíz del proyecto): `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui`
 3. Se abre la ventana de escritorio (o una pestaña del browser con `--web`, ver abajo) en la pantalla de inicio de sesión. Usá el administrador creado con `create-admin`.
 
 `DOCMANAGER_API_URL` no hace falta definirla en local: el `ApiClient` ya apunta por defecto a `http://127.0.0.1:8000`.
@@ -151,11 +161,11 @@ En escritorio el botón de cada fila es "Descargar" (diálogo de guardado); en w
 
 | Comando | Qué hace |
 | --- | --- |
-| `uv run flet run -r app/ui` | Escritorio, con *hot reload* recursivo (recompila al guardar cambios en `app/ui/` y subdirectorios) |
-| `uv run flet run -r --web app/ui` | Sirve la misma app en el browser (abre una pestaña sola); útil si no querés ventana nativa |
-| `uv run flet run -r -n app/ui` | Escritorio con la ventana arrancando oculta (`-n` / `--hidden`) |
+| `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` | Escritorio, con *hot reload* recursivo (recompila al guardar cambios en `app/ui/` y subdirectorios) |
+| `uv run flet run -r -w --ignore-dirs .flet,__pycache__,views/__pycache__ --host "*" -p 8550 app/ui` | Sirve la misma app en el browser (abre una pestaña sola); útil si no querés ventana nativa |
+| `uv run flet run -r -n --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` | Escritorio con la ventana arrancando oculta (`-n` / `--hidden`) |
 
-El flag `-r` (`--recursive`) es importante: las vistas viven en `app/ui/views/`, y sin `-r` el watcher no las observa.
+El flag `-r` (`--recursive`) es importante: las vistas viven en `app/ui/views/`, y sin `-r` el watcher no las observa. **`--ignore-dirs` también es obligatorio en desarrollo**: los directorios listados son escritura de runtime de Flet (no de tu código); sin ellos, el propio arranque de una sesión reinicia el servidor (ver gotcha siguiente).
 
 ### Gotchas verificados (Flet 1.0.4)
 
@@ -164,6 +174,11 @@ El flag `-r` (`--recursive`) es importante: las vistas viven en `app/ui/views/`,
 - `FilePicker` en Flet 1.0.4 es un **Service auto-registrado**: con construirlo dentro de `main()` alcanza (`context.page` ya está seteado). **No va en `page.overlay`** — ahí el renderer lo recibe como control visible y muestra un placeholder "Unknown control: FilePicker".
 - El `SnackBar` pasa por `page.show_dialog(ft.SnackBar(...))`, no `page.open` (pre-1.0).
 - El 401 de login no distingue contraseña incorrecta de instalación sin administrador: el hint de `create-admin` aparece ante cualquier error de autenticación.
+- **La ventana de Flet puede abrir DETRÁS del browser maximizado.** Si ves solo el logo de Flet o sentís que "no abre la pantalla de login", mirá la barra de tareas por la ventana **"Gestor documentario lácteo"** y traela al frente (alt+tab o clic en el ícono). Una corrida interrumpida (Ctrl+C, cerrar la terminal) puede dejar además un hijo huérfano `python -u app/ui/main.py` y una ventana vieja clavada en el logo: `pkill -f "app/ui/main.py"`, cerrá esa ventana y reintentá.
+- **El cierre imprime ruido de Flutter, no errores de la app.** Al cerrar la ventana la terminal puede mostrar `embedder.cc (…): 'FlutterEngineRemoveView' returned 'kInvalidArguments'. Remove view info was invalid. The implicit view cannot be removed.` y dos WARNING `Attempted to set message handler on an FlBinaryMessenger without an engine`. Es el teardown del embedder GTK de Flutter en Linux; el proceso vuelve al prompt igual. Preocupate solo si ves `Segmentation fault` / `Emergency stop` o si el proceso queda colgado.
+- **Arranque sano en cinco líneas** (con `-v`): `Starting up UDS server on /tmp/<id>` → `Flet app has started...` → `Starting Flet View app...` → `Flet client found in cache: …` → `App session started`. Si no llegan las cinco, el proceso Python de la UI no arrancó: mirá el error de la terminal antes de culpar a la UI.
+- **`-r` sin `--ignore-dirs` reinicia el servidor en cada conexión (verificado).** Flet 1.0.4 apunta el runtime de la app a `app/ui/.flet/storage/` (`TMPDIR`, `FLET_APP_STORAGE_TEMP`, cwd = `…/data`) — dentro del árbol que el watcher observa. En modo web, cada pestaña que conecta escribe `index.html`/`manifest.json` bajo `.flet/storage/temp/tmp*/`; el watcher lo toma como cambio de código y **reinicia el proceso**, la pestaña pierde el WebSocket y vuelve al logo centrado de Flet… que al reconectar repite el ciclo: la página nunca termina de cargar. En escritorio, elegir un archivo con el `FilePicker` hace lo mismo. Solución: siempre `--ignore-dirs .flet,__pycache__,views/__pycache__` (el filtro es por ruta, por eso hay que listar `views/__pycache__` aparte). Con eso, el hot reload de `*.py` sigue funcionando y las conexiones ya no reinician nada — verificado midiendo el PID del hijo antes/después de un `GET /` + handshake WebSocket: sin el flag, dos reinicios; con él, PID estable.
+- **Si la pestaña web quedó colgada en el logo**, no alcanza con recargar: el servidor puede haber quedado sin listener (el CLI sigue vivo pero el puerto 8550 ya no escucha). Cerrá la corrida con Ctrl+C y volvé a arrancar con el comando de arriba; recién ahí hacé un reload duro de la pestaña (Ctrl+Shift+R).
 
 ### Ajustar colores y tema
 
@@ -193,7 +208,7 @@ Con el *hot reload* activo, guardás el archivo y la ventana refleja el cambio s
 ### Flujo completo de prueba (UI + backend real)
 
 1. Backend arriba (terminal 1).
-2. `uv run flet run -r app/ui` (terminal 2).
+2. `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` (terminal 2).
 3. Login con el administrador → catálogo (vacío al principio).
 4. Subí un documento con su PDF desde Swagger o curl (sección anterior) y refrescá el catálogo para verlo.
 5. Probá la búsqueda y la descarga desde la UI.
@@ -206,11 +221,11 @@ Para usar la UI desde el navegador del celular (en la misma Wi-Fi que la noteboo
 # terminal 1 — API alcanzable desde la red local
 uv run uvicorn app.main:app --reload --host 0.0.0.0
 # terminal 2 — UI como sitio web (la IP es la de la notebook: hostname -I)
-DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --host "*" -p 8550 app/ui
+DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --ignore-dirs .flet,__pycache__,views/__pycache__ --host "*" -p 8550 app/ui
 ```
 
 - El celular, en la misma red Wi-Fi, abre `http://192.168.0.83:8550`.
-- Al tocar "Abrir" en una fila del catálogo, el PDF se abre en una pestaña nueva con el visor del navegador (sin diálogo de guardado); en escritorio el botón sigue siendo "Descargar" con diálogo de guardado.
+- Al tocar "Abrir" en una fila del catálogo, el PDF se abre en una pestaña nueva con el visor del navegador (sin diálogo de guardado) y aparece un aviso breve explicando cómo volver al catálogo (atrás del navegador o cambiando de pestaña); en escritorio el botón sigue siendo "Descargar" con diálogo de guardado.
 - **Token en la URL**: el botón "Abrir" navega a `GET /documents/{id}/file?token=…&inline=true`; el token de sesión queda en el URL. Es un atajo de uso local, no de producción — en producción se usarían URLs firmadas de vida corta.
 - Si la página no carga, revisá el firewall de la notebook (debe permitir los puertos 8000 y 8550 en la red local).
 
@@ -221,7 +236,7 @@ DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --host "*" -p 
 - [ ] uvicorn responde en http://127.0.0.1:8000/docs
 - [ ] `POST /auth/login` devuelve un token
 - [ ] `GET /auth/me` con `Authorization: Bearer $TOKEN` devuelve el usuario
-- [ ] `uv run flet run -r app/ui` abre la pantalla de inicio de sesión
+- [ ] `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` abre la pantalla de inicio de sesión
 - [ ] Login con el administrador llega al catálogo
 
 ## Documentos relacionados
