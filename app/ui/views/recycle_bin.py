@@ -9,6 +9,7 @@ import flet as ft
 
 from app.api.schemas import DocumentOut
 from app.ui.api_client import ApiClient, ApiError, AuthError
+from app.ui.theme import theme_toggle_button
 
 TITLE = "Papelera de reciclaje"
 EMPTY_MESSAGE = "No hay documentos retirados."
@@ -58,11 +59,13 @@ class RecycleBinView:
         on_back: Callable[[], None],
         on_notice: Callable[[str], None] | None = None,
         on_session_expired: Callable[[], None] | None = None,
+        theme_prefs: ft.SharedPreferences | None = None,
     ) -> None:
         self.client = client
         self.on_back = on_back
         self.on_notice = on_notice
         self.on_session_expired = on_session_expired
+        self._theme_prefs = theme_prefs
         self.vm = RecycleBinViewModel(client)
 
         self._rows = ft.Column(spacing=8, expand=True)
@@ -80,6 +83,7 @@ class RecycleBinView:
                     tooltip=BACK_TOOLTIP,
                     on_click=self._on_back,
                 ),
+                actions=[theme_toggle_button(self._theme_prefs)],
             ),
             padding=24,
             controls=[

@@ -10,6 +10,7 @@ import flet as ft
 
 from app.api.schemas import DocumentOut, FileOut
 from app.ui.api_client import ApiClient, ApiError, AuthError
+from app.ui.theme import theme_toggle_button
 
 CREATE_TITLE = "Nuevo documento"
 EDIT_TITLE = "Editar documento"
@@ -119,6 +120,7 @@ class DocumentFormView:
         on_saved: Callable[[], None],
         on_notice: Callable[[str], None] | None = None,
         on_session_expired: Callable[[], None] | None = None,
+        theme_prefs: ft.SharedPreferences | None = None,
     ) -> None:
         self.client = client
         self.file_picker = file_picker
@@ -126,6 +128,7 @@ class DocumentFormView:
         self.on_saved = on_saved
         self.on_notice = on_notice
         self.on_session_expired = on_session_expired
+        self._theme_prefs = theme_prefs
         self.vm = DocumentFormViewModel(client, document)
 
         self._title = ft.TextField(label=TITLE_LABEL, autofocus=document is None)
@@ -161,6 +164,7 @@ class DocumentFormView:
                     tooltip=BACK_TOOLTIP,
                     on_click=self._on_back,
                 ),
+                actions=[theme_toggle_button(self._theme_prefs)],
             ),
             padding=24,
             controls=[

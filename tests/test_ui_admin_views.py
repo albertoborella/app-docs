@@ -1171,3 +1171,112 @@ def test_admin_list_rows_do_not_use_wrapping_row():
     bin_row = bin_view._rows.controls[0].content.content
     assert isinstance(bin_row, ft.Row)
     assert not bin_row.wrap
+
+
+# --- Theme toggle presence in admin appbars ---------------------------------
+
+
+def test_admin_views_include_theme_toggle_in_appbar():
+    from app.ui.theme import THEME_TOGGLE_TOOLTIP
+
+    client = MagicMock()
+    picker = ft.FilePicker()
+
+    bin_view = RecycleBinView(client, on_back=lambda: None)
+    bin_view.vm.refresh()
+    users_view = UsersView(
+        client, on_back=lambda: None, on_create=lambda: None, on_edit=lambda u: None
+    )
+    users_view.vm.refresh()
+    user_form = UserFormView(client, on_back=lambda: None, on_saved=lambda: None)
+    doc_form = DocumentFormView(
+        client, file_picker=picker, on_back=lambda: None, on_saved=lambda: None
+    )
+
+    for view in (
+        bin_view.build(),
+        users_view.build(),
+        user_form.build(),
+        doc_form.build(),
+    ):
+        tooltips = [
+            n.tooltip for n in walk_controls(view) if isinstance(n, ft.IconButton)
+        ]
+        assert THEME_TOGGLE_TOOLTIP in tooltips
+
+
+# --- Remove confirmation flow ------------------------------------------------
+
+
+def test_remove_click_stages_confirmation_without_deleting():
+    client = MagicMock()
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+    )
+    document = make_document(document_id=7)
+
+    catalog._on_remove_click(document)
+
+    assert catalog._pending_remove is document
+    client.delete_document.assert_not_called()
+
+
+def test_remove_dialog_builds_spanish_controls():
+    client = MagicMock()
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+    )
+    catalog._pending_remove = make_document(title="Resolución 001")
+
+    dialog = catalog._build_remove_dialog()
+
+    assert isinstance(dialog, ft.AlertDialog)
+    assert dialog.modal is True
+    joined = " | ".join(collect_text_values(dialog))
+    assert "Retirar documento" in joined
+    assert "Resolución 001" in joined
+    assert "Cancelar" in joined
+    assert "Quitar" in joined
+
+
+def test_remove_confirm_executes_pending_removal():
+    client = MagicMock()
+    client.list_documents.side_effect = [[], []]
+    notices: list[str] = []
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+        on_notice=notices.append,
+    )
+    document = make_document(document_id=9)
+    catalog._on_remove_click(document)
+
+    asyncio.run(catalog._on_remove_confirm())
+
+    client.delete_document.assert_called_once_with(9)
+    assert catalog._pending_remove is None
+    assert REMOVED_MESSAGE in notices
+
+
+def test_remove_cancel_clears_pending_without_deleting():
+    client = MagicMock()
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+    )
+    catalog._on_remove_click(make_document())
+
+    asyncio.run(catalog._on_remove_cancel())
+
+    assert catalog._pending_remove is None
+    client.delete_document.assert_not_called()

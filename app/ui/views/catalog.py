@@ -11,6 +11,7 @@ import flet as ft
 
 from app.api.schemas import DocumentOut
 from app.ui.api_client import ApiClient, ApiError
+from app.ui.theme import theme_toggle_button
 
 EMPTY_MESSAGE = "No hay documentos."
 LOAD_ERROR_MESSAGE = "No se pudo cargar el catálogo."
@@ -26,12 +27,18 @@ RECYCLE_BIN_TOOLTIP = "Papelera de reciclaje"
 USERS_TOOLTIP = "Gestión de cuentas"
 REMOVED_MESSAGE = "Documento retirado del catálogo."
 REMOVE_ERROR_MESSAGE = "No se pudo retirar el documento."
+REMOVE_DIALOG_TITLE = "Retirar documento"
+REMOVE_DIALOG_QUESTION_PREFIX = "¿Retirar"
+REMOVE_DIALOG_QUESTION_SUFFIX = "del catálogo?"
+REMOVE_CONFIRM_LABEL = "Quitar"
+REMOVE_CANCEL_LABEL = "Cancelar"
 OPEN_NOTICE_MESSAGE = (
     "El documento se abrió en una pestaña nueva. "
     "Use el botón atrás del navegador o cambie de pestaña para volver al catálogo."
 )
 SAVE_DIALOG_TITLE = "Guardar archivo"
 FILTER_DEBOUNCE_SECONDS = 0.3
+MOBILE_BREAKPOINT_PX = 600
 
 
 class CatalogViewModel:
@@ -80,6 +87,8 @@ class CatalogView:
         on_edit_document: Callable[[DocumentOut], None] | None = None,
         on_open_recycle_bin: Callable[[], None] | None = None,
         on_open_users: Callable[[], None] | None = None,
+        theme_prefs: ft.SharedPreferences | None = None,
+        viewport_width: float | None = None,
     ) -> None:
         self.client = client
         self.on_sign_out = on_sign_out
@@ -91,8 +100,11 @@ class CatalogView:
         self.on_edit_document = on_edit_document
         self.on_open_recycle_bin = on_open_recycle_bin
         self.on_open_users = on_open_users
+        self._theme_prefs = theme_prefs
+        self._viewport_width = viewport_width
         self.vm = CatalogViewModel(client)
         self._filter_task: asyncio.Task | None = None
+        self._pending_remove: DocumentOut | None = None
 
         self._search_field = ft.TextField(
             label="Buscar",
@@ -104,6 +116,7 @@ class CatalogView:
         self._rows = ft.Column(spacing=8, expand=True)
         self._error_text = ft.Text("", color=ft.Colors.ERROR, visible=False)
         self._empty_text = ft.Text(EMPTY_MESSAGE, visible=False)
+        self._loading_ring = ft.ProgressRing(visible=False)
 
     def build(self) -> ft.View:
         self._rebuild_rows()
@@ -126,6 +139,7 @@ class CatalogView:
                 ),
                 self._error_text,
                 self._empty_text,
+                self._loading_ring,
                 ft.ListView(expand=True, spacing=8, controls=[self._rows]),
             ],
         )
@@ -152,6 +166,7 @@ class CatalogView:
                     ),
                 ]
             )
+        actions.append(theme_toggle_button(self._theme_prefs))
         actions.append(
             ft.IconButton(
                 icon=ft.Icons.LOGOUT,
@@ -175,37 +190,70 @@ class CatalogView:
         for document in self.vm.documents:
             self._rows.controls.append(self._document_row(document))
 
-    def _document_row(self, document: DocumentOut) -> ft.Control:
+    def _document_info(
+        self, document: DocumentOut, *, expand: bool = False
+    ) -> ft.Column:
         type_label = document.document_type or "—"
         date_label = document.issued_on.isoformat() if document.issued_on else "—"
+        return ft.Column(
+            expand=expand,
+            spacing=2,
+            controls=[
+                ft.Text(document.title, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    f"{document.issuing_body} · {type_label} · {date_label}",
+                    size=12,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+            ],
+        )
+
+    def _document_row(self, document: DocumentOut) -> ft.Control:
+        if self._is_narrow():
+            # Narrow (mobile): actions below the text, each button full width.
+            # No expand/flex anywhere: the ListView gives unbounded height.
+            return ft.Card(
+                content=ft.Container(
+                    padding=12,
+                    content=ft.Column(
+                        spacing=12,
+                        controls=[
+                            self._document_info(document),
+                            ft.Column(
+                                spacing=8,
+                                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                                controls=self._row_button_list(document),
+                            ),
+                        ],
+                    ),
+                )
+            )
+        info = self._document_info(document, expand=True)
         return ft.Card(
             content=ft.Container(
                 padding=12,
                 content=ft.Row(
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    controls=[
-                        ft.Column(
-                            expand=True,
-                            spacing=2,
-                            controls=[
-                                ft.Text(
-                                    document.title,
-                                    weight=ft.FontWeight.BOLD,
-                                ),
-                                ft.Text(
-                                    f"{document.issuing_body} · {type_label} · {date_label}",
-                                    size=12,
-                                    color=ft.Colors.ON_SURFACE_VARIANT,
-                                ),
-                            ],
-                        ),
-                        self._row_actions(document),
-                    ],
+                    controls=[info, self._row_actions(document)],
                 ),
             )
         )
 
-    def _row_actions(self, document: DocumentOut) -> ft.Control:
+    def set_viewport_width(self, width: float | None) -> None:
+        """Re-lay document rows when the viewport crosses the mobile breakpoint."""
+        if width == self._viewport_width:
+            return
+        self._viewport_width = width
+        self._rebuild_rows()
+        self._push_update()
+
+    def _is_narrow(self) -> bool:
+        return (
+            self._viewport_width is not None
+            and self._viewport_width < MOBILE_BREAKPOINT_PX
+        )
+
+    def _row_button_list(self, document: DocumentOut) -> list[ft.Control]:
         buttons: list[ft.Control] = [self._row_button(document)]
         if self.is_admin:
             buttons.append(
@@ -219,10 +267,13 @@ class CatalogView:
                 ft.FilledButton(
                     icon=ft.Icons.DELETE,
                     content=ft.Text(REMOVE_LABEL),
-                    on_click=functools.partial(self._on_remove, document),
+                    on_click=functools.partial(self._on_remove_click, document),
                 )
             )
-        return ft.Row(spacing=8, wrap=True, controls=buttons)
+        return buttons
+
+    def _row_actions(self, document: DocumentOut) -> ft.Control:
+        return ft.Row(spacing=8, wrap=True, controls=self._row_button_list(document))
 
     def _row_button(self, document: DocumentOut) -> ft.FilledButton:
         if self.web:
@@ -271,8 +322,14 @@ class CatalogView:
 
     async def _apply_filters(self) -> None:
         self.vm.query = self._search_field.value
+        self._set_loading(True)
         await asyncio.to_thread(self.vm.refresh)
+        self._set_loading(False)
         self._rebuild_rows()
+        self._push_update()
+
+    def _set_loading(self, loading: bool) -> None:
+        self._loading_ring.visible = loading
         self._push_update()
 
     def _push_update(self) -> None:
@@ -308,6 +365,55 @@ class CatalogView:
     def _on_users_click(self, _event: ft.ControlEvent | None = None) -> None:
         if self.on_open_users is not None:
             self.on_open_users()
+
+    def _on_remove_click(
+        self, document: DocumentOut, _event: ft.ControlEvent | None = None
+    ) -> None:
+        """Stage the removal and ask for confirmation (no-op when offline)."""
+        self._pending_remove = document
+        try:
+            page = self._rows.page
+        except RuntimeError:
+            return
+        page.show_dialog(self._build_remove_dialog())
+
+    def _build_remove_dialog(self) -> ft.AlertDialog:
+        title = self._pending_remove.title if self._pending_remove else ""
+        return ft.AlertDialog(
+            modal=True,
+            title=ft.Text(REMOVE_DIALOG_TITLE),
+            content=ft.Text(f"{REMOVE_DIALOG_QUESTION_PREFIX} “{title}” "
+                            f"{REMOVE_DIALOG_QUESTION_SUFFIX}"),
+            actions=[
+                ft.TextButton(
+                    content=ft.Text(REMOVE_CANCEL_LABEL),
+                    on_click=self._on_remove_cancel,
+                ),
+                ft.FilledButton(
+                    icon=ft.Icons.DELETE,
+                    content=ft.Text(REMOVE_CONFIRM_LABEL),
+                    on_click=self._on_remove_confirm,
+                ),
+            ],
+        )
+
+    async def _on_remove_cancel(self, _event: ft.ControlEvent | None = None) -> None:
+        self._pending_remove = None
+        self._close_dialog()
+
+    async def _on_remove_confirm(self, _event: ft.ControlEvent | None = None) -> None:
+        document = self._pending_remove
+        self._pending_remove = None
+        self._close_dialog()
+        if document is not None:
+            await self._on_remove(document)
+
+    def _close_dialog(self) -> None:
+        try:
+            page = self._rows.page
+        except RuntimeError:
+            return
+        page.pop_dialog()
 
     async def _on_remove(
         self, document: DocumentOut, _event: ft.ControlEvent | None = None

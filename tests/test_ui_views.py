@@ -1,7 +1,7 @@
 """View-model and view-structure tests for shared Flet views (task 5.2)."""
 
 import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import flet as ft
 import pytest
@@ -9,8 +9,15 @@ import pytest
 from app.api.schemas import DocumentOut, UserOut
 from app.db.models import Role
 from app.ui.api_client import ApiError, AuthError, NotFoundError
+from app.ui.theme import (
+    THEME_TOGGLE_TOOLTIP,
+    next_theme_mode,
+    restore_theme_mode,
+    theme_toggle_button,
+)
 from app.ui.views.catalog import (
     FILTER_DEBOUNCE_SECONDS,
+    MOBILE_BREAKPOINT_PX,
     OPEN_NOTICE_MESSAGE,
     CatalogView,
     CatalogViewModel,
@@ -397,3 +404,180 @@ def test_default_mode_is_desktop_download_button():
     assert buttons[0].on_click is not None
     assert buttons[0].action is None
     assert "Descargar" in collect_text_values(row)
+
+
+# --- Theme toggle -----------------------------------------------------------
+
+
+def test_next_theme_mode_flips_light_dark_and_system():
+    assert next_theme_mode(ft.ThemeMode.LIGHT) == ft.ThemeMode.DARK
+    assert next_theme_mode(ft.ThemeMode.DARK) == ft.ThemeMode.LIGHT
+    assert next_theme_mode(ft.ThemeMode.SYSTEM) == ft.ThemeMode.DARK
+    assert next_theme_mode(None) == ft.ThemeMode.DARK
+
+
+def test_theme_toggle_click_is_noop_when_unmounted():
+    button = theme_toggle_button()
+
+    asyncio.run(button.on_click(None))
+
+    assert button.tooltip == THEME_TOGGLE_TOOLTIP
+
+
+def test_catalog_appbar_has_theme_toggle_before_logout():
+    client = MagicMock()
+    client.list_documents.return_value = []
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+    catalog.vm.refresh()
+    view = catalog.build()
+
+    tooltips = [
+        n.tooltip for n in walk_controls(view) if isinstance(n, ft.IconButton)
+    ]
+    assert THEME_TOGGLE_TOOLTIP in tooltips
+    assert tooltips.index(THEME_TOGGLE_TOOLTIP) < tooltips.index("Cerrar sesión")
+
+
+def test_catalog_loading_ring_present_and_hidden_by_default():
+    client = MagicMock()
+    client.list_documents.return_value = []
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+    catalog.vm.refresh()
+    view = catalog.build()
+
+    rings = [n for n in walk_controls(view) if isinstance(n, ft.ProgressRing)]
+    assert len(rings) == 1
+    assert rings[0].visible is False
+
+
+def test_catalog_loading_ring_toggles_and_filters_leave_it_hidden():
+    client = MagicMock()
+    client.list_documents.return_value = []
+    catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
+    catalog.build()
+
+    catalog._set_loading(True)
+    assert catalog._loading_ring.visible is True
+    catalog._set_loading(False)
+    assert catalog._loading_ring.visible is False
+
+    asyncio.run(catalog._apply_filters())
+    assert catalog._loading_ring.visible is False
+    assert client.list_documents.called
+
+
+# --- Theme persistence -------------------------------------------------------
+
+
+def test_restore_theme_mode_applies_stored_preference():
+    prefs = MagicMock()
+    prefs.get = AsyncMock(return_value="dark")
+    page = MagicMock()
+
+    asyncio.run(restore_theme_mode(page, prefs))
+
+    assert page.theme_mode == ft.ThemeMode.DARK
+    page.update.assert_called_once()
+
+
+def test_restore_theme_mode_keeps_system_when_nothing_stored():
+    prefs = MagicMock()
+    prefs.get = AsyncMock(return_value=None)
+    page = MagicMock()
+
+    asyncio.run(restore_theme_mode(page, prefs))
+
+    page.update.assert_not_called()
+
+
+def test_restore_theme_mode_swallows_storage_errors():
+    prefs = MagicMock()
+    prefs.get = AsyncMock(side_effect=RuntimeError("client gone"))
+    page = MagicMock()
+
+    asyncio.run(restore_theme_mode(page, prefs))
+
+    page.update.assert_not_called()
+
+
+# --- Responsive document rows ------------------------------------------------
+
+
+def test_narrow_viewport_puts_buttons_below_stacked_full_width():
+    client = MagicMock()
+    client.list_documents.return_value = []
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+        viewport_width=375,
+    )
+
+    card = catalog._document_row(make_document(title="Resolución 001"))
+    top = card.content.content
+
+    assert isinstance(top, ft.Column)
+    assert len(top.controls) == 2
+    info, buttons = top.controls
+    assert isinstance(info, ft.Column)
+    assert isinstance(buttons, ft.Column)
+    assert buttons.horizontal_alignment == ft.CrossAxisAlignment.STRETCH
+    labels = collect_text_values(buttons)
+    assert "Descargar" in labels
+    assert "Editar" in labels
+    assert "Quitar" in labels
+
+
+def test_wide_viewport_keeps_side_by_side_layout():
+    client = MagicMock()
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        is_admin=True,
+        viewport_width=1024,
+    )
+
+    card = catalog._document_row(make_document())
+    top = card.content.content
+
+    assert isinstance(top, ft.Row)
+    assert top.alignment == ft.MainAxisAlignment.SPACE_BETWEEN
+
+
+def test_breakpoint_boundary_and_unknown_width():
+    client = MagicMock()
+    wide = CatalogView(
+        client, on_sign_out=lambda: None, file_picker=ft.FilePicker(),
+        viewport_width=MOBILE_BREAKPOINT_PX,
+    )
+    narrow = CatalogView(
+        client, on_sign_out=lambda: None, file_picker=ft.FilePicker(),
+        viewport_width=MOBILE_BREAKPOINT_PX - 1,
+    )
+    unknown = CatalogView(
+        client, on_sign_out=lambda: None, file_picker=ft.FilePicker(),
+    )
+
+    assert wide._is_narrow() is False
+    assert narrow._is_narrow() is True
+    assert unknown._is_narrow() is False
+
+
+def test_set_viewport_width_rebuilds_rows_in_place():
+    client = MagicMock()
+    client.list_documents.return_value = [make_document()]
+    catalog = CatalogView(
+        client,
+        on_sign_out=lambda: None,
+        file_picker=ft.FilePicker(),
+        viewport_width=1024,
+    )
+    catalog.vm.refresh()
+    catalog.build()
+    assert isinstance(catalog._rows.controls[0].content.content, ft.Row)
+
+    catalog.set_viewport_width(400)
+
+    assert isinstance(catalog._rows.controls[0].content.content, ft.Column)

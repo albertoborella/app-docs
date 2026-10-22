@@ -10,6 +10,7 @@ import flet as ft
 from app.api.schemas import UserOut
 from app.db.models import Role
 from app.ui.api_client import ApiClient, ApiError, AuthError
+from app.ui.theme import theme_toggle_button
 
 LIST_TITLE = "Gestión de cuentas"
 NEW_USER_TOOLTIP = "Nuevo usuario"
@@ -121,6 +122,7 @@ class UsersView:
         on_edit: Callable[[UserOut], None],
         on_notice: Callable[[str], None] | None = None,
         on_session_expired: Callable[[], None] | None = None,
+        theme_prefs: ft.SharedPreferences | None = None,
     ) -> None:
         self.client = client
         self.on_back = on_back
@@ -128,6 +130,7 @@ class UsersView:
         self.on_edit = on_edit
         self.on_notice = on_notice
         self.on_session_expired = on_session_expired
+        self._theme_prefs = theme_prefs
         self.vm = UsersViewModel(client)
 
         self._rows = ft.Column(spacing=8, expand=True)
@@ -150,7 +153,8 @@ class UsersView:
                         icon=ft.Icons.PERSON_ADD,
                         tooltip=NEW_USER_TOOLTIP,
                         on_click=self._on_create,
-                    )
+                    ),
+                    theme_toggle_button(self._theme_prefs),
                 ],
             ),
             padding=24,
@@ -230,12 +234,14 @@ class UserFormView:
         on_saved: Callable[[], None],
         on_notice: Callable[[str], None] | None = None,
         on_session_expired: Callable[[], None] | None = None,
+        theme_prefs: ft.SharedPreferences | None = None,
     ) -> None:
         self.client = client
         self.on_back = on_back
         self.on_saved = on_saved
         self.on_notice = on_notice
         self.on_session_expired = on_session_expired
+        self._theme_prefs = theme_prefs
         self.vm = UserFormViewModel(client, user)
 
         self._username = ft.TextField(label=USERNAME_LABEL, autofocus=user is None)
@@ -271,6 +277,7 @@ class UserFormView:
                     tooltip=BACK_TOOLTIP,
                     on_click=self._on_back,
                 ),
+                actions=[theme_toggle_button(self._theme_prefs)],
             ),
             padding=24,
             controls=[
