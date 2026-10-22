@@ -1,0 +1,8 @@
+# Runtime dependencies (mirrors pyproject.toml pins).
+bcrypt==5.0.0
+fastapi==0.143.3
+flet[web]==1.0.4
+httpx==0.28.1
+python-multipart==0.0.32
+sqlmodel==0.0.48
+uvicorn==0.54.0
