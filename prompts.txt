@@ -204,3 +204,14 @@ Ok, ahora parece andar bien, pero veo lo siguiente, cuando se corre en web, o lo
 Ok, esto anda muy bien. Creo que ahora lo que deberias hacer es un admin que solo lo pueda ver el administrador y lo ideal sería que se utilice desde la web. El ojetivo de este admin seria, crear usuarios con rol de superadmin o normal. Tambien el rol de superadmin podra crear documentos, subir pdf, docs, etc, modificar documentos y eliminar documentos.
 
 Quisiera que analices la ultima sesion y a partir de ahí continuemos. Creo que deberiamos seguir con el admin como te comente en pronpts anteriores.
+
+Continuemos, me gustaria que analices el sistema y me orientes con lo siguiente. Quisiera indicarte las formas de uso de la aplicación. Según los distintos usuarios puede utilizarce de diferentes manera.
+1) En forma de desktop (escritorio) donde se trata de entregar un archivo ejecutable a un cliente, ese archivo se debería descargar en una pc, y comenzar a usar. En ese archivo, incluiría la db con todos los documentos, ya que la forma de uso es ver documentos, filtrar y descargar documentos. En este caso, cuando el administrador del sistema actualiza los documentos, debería mandarle un archivo actualizado al cliente que lo está utilizando.
+2) Poder usar tambien en el movil aunque no se como es el procedimiento, creo que tambien se descarga un archivo, pero desconozco y me gustaría que me indiques
+3) El administrador del sistema debe poder desde un PC, poder actualizar los documentos, eliminando alguno, cargando algun otro etc, y desde el mismo sistema administrador poder generar un nuevo archivo ejecutable para enviar a los clientes para descargar en la PC de cada uno y lo mismo (no se a travéz de que mecanismo se vea actualizado en los móviles a los clientes que lo deseen, o al movil del propio administrador). Entiendes lo que quise explicar??
+
+Ok, estoy entendiendo, o sea que lo mas conveniente y sencillo sería desplegarlo en un hosting y que luego cada cliente se sirva de ese hosting. La otra forma(sin internet) es factible pero mucho mas complicada, entonces la descarto. 
+
+Antes del despliegue quisiera lo siguiente, en primer lugar, quisiera que armes un archivo requirements.txt en el proyecto, con todas las dependencias que utilizamos. Y otra cosa, tener el yipico botón para cambiar desde la aplicacion mode light/mode Dark , y si consideras algún otro cambio que embellezca la aplicacion, que me lo sugieras.
+
+Antes de continuar con el despliegue, quisiera hacer lo siguiente, quizas sea conveniente que cuando se achica la pantalla en el caso de nóviles, los botones que estan en cada documento, en lugar de estar hacia el lado derecho, esten debajo en el documento, ocupando en ancho y uno debajo del otro, se entiende?
