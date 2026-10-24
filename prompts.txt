@@ -215,3 +215,5 @@ Ok, estoy entendiendo, o sea que lo mas conveniente y sencillo sería desplegarl
 Antes del despliegue quisiera lo siguiente, en primer lugar, quisiera que armes un archivo requirements.txt en el proyecto, con todas las dependencias que utilizamos. Y otra cosa, tener el yipico botón para cambiar desde la aplicacion mode light/mode Dark , y si consideras algún otro cambio que embellezca la aplicacion, que me lo sugieras.
 
 Antes de continuar con el despliegue, quisiera hacer lo siguiente, quizas sea conveniente que cuando se achica la pantalla en el caso de nóviles, los botones que estan en cada documento, en lugar de estar hacia el lado derecho, esten debajo en el documento, ocupando en ancho y uno debajo del otro, se entiende?
+
+Quisiera que a medida que voy cargando nuevos documentos, en el listado de documentos los coloques en orden alfanumerica teniendo en cuenta el campo título. 
