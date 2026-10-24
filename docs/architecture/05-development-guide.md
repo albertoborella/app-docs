@@ -2,12 +2,37 @@
 
 Cómo levantar el backend y la UI de Flet en tu máquina, crear el primer administrador, probar los endpoints con Swagger o curl, y ajustar la interfaz (tema, colores). Para la estrategia de despliegue por objetivo, ver `03-deployment.md`.
 
-## Camino rápido
+## Puesta en marcha
+
+Hay dos formas de levantar la app, según lo que necesites:
+
+| Situación | Qué corrés | Resultado |
+| --- | --- | --- |
+| **Cada sesión** (demo real, celular desde cualquier lugar) | `./demo-up.sh` | Un solo proceso: API + UI en el puerto 8080, con link HTTPS público para el celular |
+| **Desarrollo** (hot reload al guardar código) | Dos procesos: `uvicorn` + `flet run` | API en 8000 y UI en ventana nativa o puerto 8550; sin túnel |
+
+### Una sola vez (prerrequisitos)
 
 1. Desde la raíz del proyecto, instalá las dependencias: `uv sync`
 2. Creá el administrador (también crea el esquema de la base): `uv run python -m app.cli create-admin --username admin`
-3. Arrancá el servidor: `uv run uvicorn app.main:app --reload`
-4. Abrí Swagger UI: http://127.0.0.1:8000/docs
+
+### Cada sesión: un solo comando
+
+```bash
+./demo-up.sh
+```
+
+El script arranca el server combinado (API + UI Flet montada en el mismo puerto, `app/server.py`), levanta un Cloudflare Quick Tunnel por delante e **imprime el link** `https://…trycloudflare.com` para abrir desde el celular, desde cualquier lugar. Ver *Modo demo* más abajo para el detalle (logs, parar, y por qué el link cambia).
+
+### Desarrollo con hot reload
+
+Dos procesos (API y UI separadas) para que al guardar un `.py` se recargue solo:
+
+1. Terminal 1 — backend: `uv run uvicorn app.main:app --reload`
+2. Terminal 2 — frontend: `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui`
+3. Abrí Swagger UI: http://127.0.0.1:8000/docs
+
+El detalle de los modos de Flet (escritorio, web, celular en la misma Wi-Fi) está en *Frontend (Flet)* más abajo.
 
 ## Requisitos
 
@@ -48,6 +73,50 @@ uv run uvicorn app.main:app --reload
 - `--reload` reinicia al detectar cambios: solo para desarrollo local.
 - **Un solo trabajador**: SQLite tiene un único escritor (NFR-11); no levantes varios procesos uvicorn contra la misma base.
 - Los comandos de esta guía se ejecutan desde la raíz del proyecto (donde está `pyproject.toml`).
+
+## Modo demo: un solo comando + link para el celular
+
+Para usar la app "en serio" desde el celular — desde cualquier lugar, no solo en la misma Wi-Fi — no hace falta tener dos terminales ni pensar en la IP local: `demo-up.sh` levanta todo y te da un link HTTPS público.
+
+```bash
+./demo-up.sh          # arranca todo y muestra el link
+./demo-up.sh stop     # detiene el server y el túnel
+```
+
+### Qué hace el script
+
+1. Mata los restos de una corrida anterior (solo los procesos de esta demo; no toca nada más).
+2. Arranca el **server combinado**: `uvicorn app.server:app` en `127.0.0.1:8080`. Ese entry point monta la API **y** la UI de Flet en el mismo puerto (`app/server.py` → `create_app(mount_flet=True)`), así que un único proceso sirve las dos cosas. Sin `--reload`: es una corrida de demo, no de desarrollo.
+3. Espera a que `/docs` responda (hasta 60 s).
+4. Levanta un **Cloudflare Quick Tunnel** (cuenta gratuita, sin dominio) delante de ese puerto.
+5. Extrae la URL del log del túnel y la imprime en grande.
+
+Logs: `var/demo-server.log` y `var/cloudflared.log` (ambos gitignored). Si algo falla, el script muestra las últimas líneas del log correspondiente.
+
+### Por qué el link cambia cada vez (y qué hacer si se cae la sesión)
+
+El Quick Tunnel genera una URL **aleatoria en cada arranque**: no se puede conservar ni "renovar" el mismo link. La mecánica ante una desconexión es siempre la misma:
+
+```bash
+./demo-up.sh
+```
+
+El script mata el túnel viejo (su link deja de existir), levanta todo de nuevo y muestra **un link nuevo**. Si le pasaste ese link a alguien, hay que reenviárselo. Es el tradeoff de ser gratis y sin cuenta: si necesitás un link permanente, eso es un Cloudflare Named Tunnel con dominio propio (fuera del alcance de esta guía).
+
+### Límites a tener en cuenta
+
+- Sin SLA de uptime: es un servicio de prueba de Cloudflare.
+- Soporta hasta 200 conexiones concurrentes; alcanza para una demo.
+- No es un despliegue de producción — la estrategia real está en `03-deployment.md`.
+
+### Relación con los otros modos
+
+| Modo | Procesos | Puerto(s) | Hot reload | Link remoto |
+| --- | --- | --- | --- | --- |
+| `demo-up.sh` | uno (API+UI juntas) | 8080 + túnel | no | sí, URL aleatoria por sesión |
+| Desarrollo local | dos (`uvicorn` + `flet run`) | 8000 + 8550/ventana | sí | no (solo misma Wi-Fi con `--host`) |
+| Escritorio | dos (`uvicorn` + `flet run`) | 8000 + ventana | sí | no |
+
 
 ## Variables de entorno
 
@@ -131,13 +200,13 @@ La superficie completa (edición de usuarios, borrado suave, restauración) y lo
 
 ## Frontend (Flet): correr y ajustar la UI
 
-El frontend es una app Flet 1.0.4 (desktop o browser) que consume la API con el mismo `ApiClient` en todos los objetivos. Para probarla hace falta **dos terminales**: el backend y la UI.
+El frontend es una app Flet 1.0.4 (desktop o browser) que consume la API con el mismo `ApiClient` en todos los objetivos. Para probarla con hot reload hacen falta **dos terminales**: el backend y la UI. Si solo querés usarla (sin recargar al guardar), el modo demo de un solo proceso de *Modo demo* sirve ambas cosas en el puerto 8080.
 
 ### Modelo mental: dos procesos, tres formas de entrar
 
 Todo lo que sigue se entiende con este esquema:
 
-- **Hay siempre dos procesos**: el **API** (uvicorn, puerto 8000) y la **UI** (Flet). No existen tres apps: la UI es el mismo código (`app/ui`) corriendo en dos modos — *escritorio* (ventana nativa) o *web* (la notebook la sirve como sitio web, puerto 8550).
+- **En desarrollo hay dos procesos**: el **API** (uvicorn, puerto 8000) y la **UI** (Flet). No existen tres apps: la UI es el mismo código (`app/ui`) corriendo en dos modos — *escritorio* (ventana nativa) o *web* (la notebook la sirve como sitio web, puerto 8550). (En modo demo, en cambio, un solo proceso sirve API y UI juntas — ver *Modo demo*.)
 - **El API y la UI corren en la notebook.** El celular (u otra computadora) **nunca corre Python**: solo abre un navegador apuntado al sitio web que sirve la notebook. Por eso desde cualquier dispositivo ves la misma app, con la misma base y el mismo inicio de sesión.
 - **Tres formas de entrar**, todas contra el mismo API:
 
@@ -233,11 +302,12 @@ DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --ignore-dirs 
 
 - [ ] `uv sync` terminó sin errores
 - [ ] `create-admin` creó el administrador (y con eso, el esquema)
-- [ ] uvicorn responde en http://127.0.0.1:8000/docs
+- [ ] `uvicorn responde en http://127.0.0.1:8000/docs`
 - [ ] `POST /auth/login` devuelve un token
 - [ ] `GET /auth/me` con `Authorization: Bearer $TOKEN` devuelve el usuario
 - [ ] `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` abre la pantalla de inicio de sesión
 - [ ] Login con el administrador llega al catálogo
+- [ ] (Modo demo) `./demo-up.sh` imprime un link `https://…trycloudflare.com` y ese link abre la pantalla de login desde el celular
 
 ## Documentos relacionados
 
