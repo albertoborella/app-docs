@@ -5,6 +5,7 @@ One client path for every deployment target (web, desktop, mobile) per design.md
 
 from __future__ import annotations
 
+import logging
 import mimetypes
 import os
 from datetime import date
@@ -15,6 +16,8 @@ import httpx
 
 from app.api.schemas import DocumentOut, FileOut, UserOut
 from app.db.models import Role
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 _API_PREFIX = "/api/v1"
@@ -54,6 +57,11 @@ class ApiClient:
     ) -> None:
         resolved = base_url or os.environ.get("DOCMANAGER_API_URL") or DEFAULT_BASE_URL
         self.base_url = resolved.rstrip("/")
+        # Browser-facing origin for file links (OpenUrl). Defaults to the API
+        # origin; DOCMANAGER_PUBLIC_API_URL="" makes links same-origin relative
+        # so any tunnel/proxy origin works without reconfiguring the client.
+        public = os.environ.get("DOCMANAGER_PUBLIC_API_URL")
+        self.public_base_url = (resolved if public is None else public).rstrip("/")
         self.token = token
         self._client = httpx.Client(
             base_url=self.base_url,
@@ -311,6 +319,14 @@ class ApiClient:
                 headers=headers,
             )
         except httpx.HTTPError as exc:
+            logger.warning(
+                "API transport failure: %s %s via %s (%s: %s)",
+                method,
+                path,
+                self.base_url,
+                type(exc).__name__,
+                exc,
+            )
             raise ApiError(_TRANSPORT_MESSAGE) from exc
 
     def _raise_for_status(self, response: httpx.Response) -> None:

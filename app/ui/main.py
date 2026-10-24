@@ -10,7 +10,9 @@ Flet 1.0.4 exposes ``ft.run`` (not the pre-1.0 ``ft.app`` symbol).
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
+from collections.abc import Awaitable
 from pathlib import Path
 
 # `flet run app/ui` loads main.py as a script; keep the project root importable.
@@ -31,6 +33,29 @@ from app.ui.views.sign_in import SignInView  # noqa: E402
 from app.ui.views.users import UserFormView, UsersView  # noqa: E402
 
 APP_TITLE = "Normativas Inocuidad Productos Lacteos"
+
+logger = logging.getLogger(__name__)
+
+
+def _schedule_load(load: Awaitable[None]) -> None:
+    """Run an initial view load without blocking the event loop.
+
+    Flet executes sync handlers inline on the asyncio loop. A blocking HTTP
+    self-call there deadlocks the combined single-process server (uvicorn
+    never accepts the request the same process is waiting on).
+    """
+
+    def _log_failure(task: asyncio.Task[None]) -> None:
+        if task.cancelled() or task.exception() is None:
+            return
+        logger.error("Scheduled view load failed", exc_info=task.exception())
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(load)  # offline/unit usage: no loop, run to completion
+        return
+    loop.create_task(load).add_done_callback(_log_failure)
 
 
 def main(page: ft.Page) -> None:
@@ -95,10 +120,10 @@ def main(page: ft.Page) -> None:
             viewport_width=page.width,
         )
         active_catalog["catalog"] = catalog
-        catalog.vm.refresh()
         _replace(catalog.build())
         # Width may only be populated after the first client sync; re-check post-mount.
         catalog.set_viewport_width(page.width)
+        _schedule_load(catalog.load())
 
     def show_document_form(document: DocumentOut | None = None) -> None:
         form = DocumentFormView(
@@ -121,8 +146,8 @@ def main(page: ft.Page) -> None:
             on_session_expired=show_sign_in,
             theme_prefs=theme_prefs,
         )
-        view.vm.refresh()
         _replace(view.build())
+        _schedule_load(view.load())
 
     def show_users() -> None:
         view = UsersView(
@@ -134,8 +159,8 @@ def main(page: ft.Page) -> None:
             on_session_expired=show_sign_in,
             theme_prefs=theme_prefs,
         )
-        view.vm.refresh()
         _replace(view.build())
+        _schedule_load(view.load())
 
     def show_user_form(user: UserOut | None = None) -> None:
         form = UserFormView(

@@ -181,6 +181,17 @@ class UsersView:
         for user in self.vm.users:
             self._rows.controls.append(self._user_row(user))
 
+    async def load(self) -> None:
+        """Initial load, keeping the blocking HTTP call off the event loop."""
+        await asyncio.to_thread(self.vm.refresh)
+        # _rebuild_rows() redirects to sign-in when the session expired.
+        self._rebuild_rows()
+        try:
+            page = self._rows.page
+        except RuntimeError:
+            return
+        page.update()
+
     def _user_row(self, user: UserOut) -> ft.Control:
         state_label = ACTIVE_STATE if user.is_active else INACTIVE_STATE
         subtitle = f"{role_label(user.role)} · {state_label}"

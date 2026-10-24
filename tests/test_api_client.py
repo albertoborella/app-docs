@@ -536,3 +536,15 @@ def test_upload_file_bytes_sends_multipart_and_returns_file_metadata():
     assert "multipart/form-data" in request.headers["content-type"]
     assert b"%PDF-1.4 fake" in request.content
     assert record.original_filename == "norma.pdf"
+
+
+def test_public_api_url_defaults_to_base_url():
+    client = ApiClient(base_url=BASE_URL)
+    assert client.public_base_url == BASE_URL
+
+
+def test_public_api_url_env_makes_browser_links_relative(monkeypatch):
+    monkeypatch.setenv("DOCMANAGER_PUBLIC_API_URL", "")
+    client = ApiClient(base_url="http://127.0.0.1:8080")
+    assert client.base_url == "http://127.0.0.1:8080"
+    assert client.public_base_url == ""

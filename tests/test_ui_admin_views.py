@@ -1133,7 +1133,7 @@ def test_sign_in_success_passes_user_to_callback():
     sign_in._username.value = "admin"
     sign_in._password.value = "secret"
 
-    sign_in._on_submit()
+    asyncio.run(sign_in._on_submit())
 
     assert len(received) == 1
     assert received[0].username == "admin"

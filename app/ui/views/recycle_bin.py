@@ -165,6 +165,13 @@ class RecycleBinView:
         self._rebuild_rows()
         self._push_update()
 
+    async def load(self) -> None:
+        """Initial load, keeping the blocking HTTP call off the event loop."""
+        await asyncio.to_thread(self.vm.refresh)
+        # _rebuild_rows() redirects to sign-in when the session expired.
+        self._rebuild_rows()
+        self._push_update()
+
     def _push_update(self) -> None:
         """Push rebuilt rows to the client; no-op when offline (unit tests)."""
         try:

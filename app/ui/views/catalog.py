@@ -296,7 +296,7 @@ class CatalogView:
         """Browser-navigable URL for the file: query token + inline display."""
         token = quote(self.client.token or "", safe="")
         return (
-            f"{self.client.base_url}/api/v1/documents/{document.id}/file"
+            f"{self.client.public_base_url}/api/v1/documents/{document.id}/file"
             f"?token={token}&inline=true"
         )
 
@@ -328,6 +328,14 @@ class CatalogView:
         self._rebuild_rows()
         self._push_update()
 
+    async def load(self) -> None:
+        """Initial load, keeping the blocking HTTP call off the event loop."""
+        self._set_loading(True)
+        await asyncio.to_thread(self.vm.refresh)
+        self._set_loading(False)
+        self._rebuild_rows()
+        self._push_update()
+
     def _set_loading(self, loading: bool) -> None:
         self._loading_ring.visible = loading
         self._push_update()
@@ -340,10 +348,12 @@ class CatalogView:
             return
         page.update()
 
-    def _on_sign_out_click(self, _event: ft.ControlEvent | None = None) -> None:
+    async def _on_sign_out_click(self, _event: ft.ControlEvent | None = None) -> None:
         self._cancel_filter_task()
         try:
-            self.client.logout()
+            # Blocking HTTP must leave the event loop: in the combined
+            # single-process server, a sync self-call deadlocks uvicorn.
+            await asyncio.to_thread(self.client.logout)
         except ApiError:
             pass
         self.on_sign_out()

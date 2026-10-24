@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 
 import flet as ft
@@ -95,13 +96,15 @@ class SignInView:
             ],
         )
 
-    def _on_submit(self, _event: ft.ControlEvent | None = None) -> None:
+    async def _on_submit(self, _event: ft.ControlEvent | None = None) -> None:
         username = (self._username.value or "").strip()
         password = self._password.value or ""
         if not username or not password:
             self.error("Complete usuario y contraseña.")
             return
-        if self.vm.submit(username, password):
+        # Blocking HTTP must leave the event loop: in the combined single-process
+        # server, a sync self-call deadlocks uvicorn (never accepts its own request).
+        if await asyncio.to_thread(self.vm.submit, username, password):
             if self.vm.user is not None:
                 self.on_success(self.vm.user)
             return

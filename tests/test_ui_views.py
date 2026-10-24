@@ -322,6 +322,7 @@ def test_catalog_view_error_state_message():
 def test_file_url_builds_api_url_with_quoted_token_and_inline():
     client = MagicMock()
     client.base_url = "http://192.168.0.83:8550"
+    client.public_base_url = "http://192.168.0.83:8550"
     client.token = "abc+/=def"  # characters that must be percent-encoded
     catalog = CatalogView(
         client, on_sign_out=lambda: None, file_picker=ft.FilePicker(), web=True
@@ -338,6 +339,7 @@ def test_file_url_builds_api_url_with_quoted_token_and_inline():
 def test_file_url_with_missing_token_yields_empty_token_param():
     client = MagicMock()
     client.base_url = "http://127.0.0.1:8000"
+    client.public_base_url = "http://127.0.0.1:8000"
     client.token = None
     catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
 
@@ -358,6 +360,7 @@ def test_web_mode_row_button_opens_url_in_new_tab(monkeypatch):
     monkeypatch.setattr("app.ui.views.catalog.ft.OpenUrl", _StubOpenUrl)
     client = MagicMock()
     client.base_url = "http://192.168.0.83:8550"
+    client.public_base_url = "http://192.168.0.83:8550"
     client.token = "tok"
     catalog = CatalogView(
         client, on_sign_out=lambda: None, file_picker=ft.FilePicker(), web=True
