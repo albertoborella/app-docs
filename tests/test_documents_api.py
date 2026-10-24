@@ -151,6 +151,22 @@ def test_normal_user_sees_whole_active_catalog(client, admin_token, user_token):
     assert {item["title"] for item in response.json()} == {"A", "B"}
 
 
+def test_catalog_is_sorted_alphanumerically_by_title(client, admin_token, user_token):
+    # Created in a deliberately scrambled order, including accents, case and numbers.
+    for title in ("Zanahoria", "Doc 10", "banana", "Ácido", "Doc 2", "árbol"):
+        create_via_api(client, admin_token, title=title, issuing_body="SENASA")
+    response = client.get("/api/v1/documents", headers=bearer(user_token))
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == [
+        "Ácido",
+        "árbol",
+        "banana",
+        "Doc 2",
+        "Doc 10",
+        "Zanahoria",
+    ]
+
+
 def test_query_search_matches_title_and_issuing_body(client, admin_token, user_token):
     create_via_api(client, admin_token, title="Resolución 123", issuing_body="SENASA")
     create_via_api(client, admin_token, title="Decreto 9", issuing_body="MVD")

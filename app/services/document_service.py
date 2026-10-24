@@ -1,11 +1,30 @@
 """Document catalog domain rules: list/search/filter, admin CRUD, soft delete, restore."""
 
+import re
+import unicodedata
 from datetime import date
 
 from sqlmodel import Session, select
 
 from app.core.security import utc_now
 from app.db.models import Document
+
+_ALPHANUM_SPLIT = re.compile(r"(\d+)")
+
+
+def _title_sort_key(document: Document) -> tuple[tuple[int, int, str], ...]:
+    """Alphanumeric catalog order: case- and accent-insensitive, natural numbers.
+
+    "Ácido" and "árbol" sort next to "A"/"a" (SQLite's NOCASE would push them
+    after "Z"), and "Doc 2" precedes "Doc 10".
+    """
+    decomposed = unicodedata.normalize("NFD", document.title or "")
+    folded = "".join(ch for ch in decomposed if not unicodedata.combining(ch)).casefold()
+    parts = (part for part in _ALPHANUM_SPLIT.split(folded) if part)
+    # Every element is (is_number, number, text) so comparisons stay type-safe.
+    return tuple(
+        (1, int(part), "") if part.isdigit() else (0, 0, part) for part in parts
+    )
 
 
 def list_documents(
@@ -41,7 +60,10 @@ def list_documents(
         stmt = stmt.where(Document.country.contains(country))
     if topic is not None:
         stmt = stmt.where(Document.topic.contains(topic))
-    return list(db.exec(stmt.order_by(Document.id)).all())
+    documents = list(db.exec(stmt.order_by(Document.id)).all())
+    # Stable sort over the id-ordered rows: ties keep their insertion order.
+    documents.sort(key=_title_sort_key)
+    return documents
 
 
 def get_document(db: Session, document_id: int) -> Document | None:
