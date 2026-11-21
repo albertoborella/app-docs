@@ -217,3 +217,9 @@ Antes del despliegue quisiera lo siguiente, en primer lugar, quisiera que armes 
 Antes de continuar con el despliegue, quisiera hacer lo siguiente, quizas sea conveniente que cuando se achica la pantalla en el caso de nóviles, los botones que estan en cada documento, en lugar de estar hacia el lado derecho, esten debajo en el documento, ocupando en ancho y uno debajo del otro, se entiende?
 
 Quisiera que a medida que voy cargando nuevos documentos, en el listado de documentos los coloques en orden alfanumerica teniendo en cuenta el campo título. 
+
+quisiera que veas todo lo realizado en este sistema. Todo funciona bien, pero quisiera consultarte lo siguiente para ver si es posible:
+1) Que todo el sistema hasta ahora realizado, pase a formar parte de un nuevo sistema como un módulo de ese nuevo sistema.
+2) Otra posibilidad es mantener este sistema, donde and muy bien pero arquitectonicamente sea solo un modulo del sistema. El sistema se sigue llamando "app-docs" y dentro del mismo conformar el módulo "documentos_oficiales" que sería todo lo realizado hasta ahora.
+3) Ya sea que me aconsejes la opción 1) o 2) si es posible, luego de realizar este cambio de arquitectura, entonces empezaríamos con otros módulos, que iremos haciendo de a uno por vez.
+Me gustaría que me des tu opinión. 
