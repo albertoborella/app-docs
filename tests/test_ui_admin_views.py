@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 import flet as ft
 import pytest
 
-from app.api.schemas import DocumentOut, UserOut
-from app.db.models import Role
-from app.ui.api_client import ApiError, AuthError
-from app.ui.views.catalog import (
+from app.documentos_oficiales.api.schemas import DocumentOut, UserOut
+from app.documentos_oficiales.db.models import Role
+from app.documentos_oficiales.ui.api_client import ApiError, AuthError
+from app.documentos_oficiales.ui.views.catalog import (
     EDIT_LABEL,
     NEW_DOCUMENT_TOOLTIP,
     RECYCLE_BIN_TOOLTIP,
@@ -20,7 +20,7 @@ from app.ui.views.catalog import (
     USERS_TOOLTIP,
     CatalogView,
 )
-from app.ui.views.document_form import (
+from app.documentos_oficiales.ui.views.document_form import (
     INVALID_DATE_MESSAGE,
     MISSING_FIELDS_MESSAGE,
     SAVED_MESSAGE,
@@ -29,7 +29,7 @@ from app.ui.views.document_form import (
     DocumentFormView,
     DocumentFormViewModel,
 )
-from app.ui.views.recycle_bin import (
+from app.documentos_oficiales.ui.views.recycle_bin import (
     EMPTY_MESSAGE,
     LOAD_ERROR_MESSAGE,
     RESTORE_ERROR_MESSAGE,
@@ -37,8 +37,8 @@ from app.ui.views.recycle_bin import (
     RecycleBinView,
     RecycleBinViewModel,
 )
-from app.ui.views.sign_in import SignInView
-from app.ui.views.users import (
+from app.documentos_oficiales.ui.views.sign_in import SignInView
+from app.documentos_oficiales.ui.views.users import (
     CREATED_MESSAGE,
     MISSING_CREDENTIALS_MESSAGE,
     MISSING_USERNAME_MESSAGE,
@@ -48,7 +48,7 @@ from app.ui.views.users import (
     UsersView,
     UsersViewModel,
 )
-from app.ui.views.users import SAVED_MESSAGE as USER_SAVED_MESSAGE
+from app.documentos_oficiales.ui.views.users import SAVED_MESSAGE as USER_SAVED_MESSAGE
 
 
 def make_user(
@@ -1177,7 +1177,7 @@ def test_admin_list_rows_do_not_use_wrapping_row():
 
 
 def test_admin_views_include_theme_toggle_in_appbar():
-    from app.ui.theme import THEME_TOGGLE_TOOLTIP
+    from app.documentos_oficiales.ui.theme import THEME_TOGGLE_TOOLTIP
 
     client = MagicMock()
     picker = ft.FilePicker()

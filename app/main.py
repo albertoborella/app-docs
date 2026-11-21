@@ -4,10 +4,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import auth, documents, files, users
-from app.core.config import get_settings
-from app.db.migrations import ensure_document_columns
-from app.db.session import create_db_engine
+from app.documentos_oficiales.api.routes import auth, documents, files, users
+from app.documentos_oficiales.core.config import get_settings
+from app.documentos_oficiales.db.migrations import ensure_document_columns
+from app.documentos_oficiales.db.session import create_db_engine
 
 
 def create_app(*, mount_flet: bool = False) -> FastAPI:
@@ -42,7 +42,7 @@ def create_app(*, mount_flet: bool = False) -> FastAPI:
         # Mounted last: the Flet app owns a catch-all index.html for its SPA.
         import flet.fastapi as flet_fastapi
 
-        from app.ui.main import main as ui_main
+        from app.documentos_oficiales.ui.main import main as ui_main
 
         application.mount("/", flet_fastapi.app(ui_main))
     return application

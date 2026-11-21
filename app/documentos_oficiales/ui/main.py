@@ -2,7 +2,7 @@
 
 Run from the project root:
 
-    DOCMANAGER_API_URL=http://127.0.0.1:8000 flet run app/ui
+    DOCMANAGER_API_URL=http://127.0.0.1:8000 flet run app/documentos_oficiales/ui
 
 Flet 1.0.4 exposes ``ft.run`` (not the pre-1.0 ``ft.app`` symbol).
 """
@@ -15,22 +15,23 @@ import sys
 from collections.abc import Awaitable
 from pathlib import Path
 
-# `flet run app/ui` loads main.py as a script; keep the project root importable.
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# `flet run app/documentos_oficiales/ui` loads main.py as a script;
+# keep the project root importable.
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 import flet as ft  # noqa: E402
 
-from app.api.schemas import DocumentOut, UserOut  # noqa: E402
-from app.db.models import Role  # noqa: E402
-from app.ui.api_client import ApiClient  # noqa: E402
-from app.ui.theme import restore_theme_mode  # noqa: E402
-from app.ui.views.catalog import CatalogView  # noqa: E402
-from app.ui.views.document_form import DocumentFormView  # noqa: E402
-from app.ui.views.recycle_bin import RecycleBinView  # noqa: E402
-from app.ui.views.sign_in import SignInView  # noqa: E402
-from app.ui.views.users import UserFormView, UsersView  # noqa: E402
+from app.documentos_oficiales.api.schemas import DocumentOut, UserOut  # noqa: E402
+from app.documentos_oficiales.db.models import Role  # noqa: E402
+from app.documentos_oficiales.ui.api_client import ApiClient  # noqa: E402
+from app.documentos_oficiales.ui.theme import restore_theme_mode  # noqa: E402
+from app.documentos_oficiales.ui.views.catalog import CatalogView  # noqa: E402
+from app.documentos_oficiales.ui.views.document_form import DocumentFormView  # noqa: E402
+from app.documentos_oficiales.ui.views.recycle_bin import RecycleBinView  # noqa: E402
+from app.documentos_oficiales.ui.views.sign_in import SignInView  # noqa: E402
+from app.documentos_oficiales.ui.views.users import UserFormView, UsersView  # noqa: E402
 
 APP_TITLE = "Normativas Inocuidad Productos Lacteos"
 

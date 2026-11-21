@@ -5,9 +5,9 @@ from pathlib import Path
 
 from sqlmodel import Session, select
 
-from app.core.config import get_settings
-from app.core.security import utc_now
-from app.db.models import DocumentFile
+from app.documentos_oficiales.core.config import get_settings
+from app.documentos_oficiales.core.security import utc_now
+from app.documentos_oficiales.db.models import DocumentFile
 
 ALLOWED_EXTENSIONS = frozenset({".pdf", ".docx", ".xlsx", ".odt", ".png", ".jpg"})
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024

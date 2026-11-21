@@ -8,9 +8,9 @@ from fastapi import Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
-from app.db.models import Role, User
-from app.db.session import get_session
-from app.services import auth_service
+from app.documentos_oficiales.db.models import Role, User
+from app.documentos_oficiales.db.session import get_session
+from app.documentos_oficiales.services import auth_service
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

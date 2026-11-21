@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlmodel import Session
 
-from app.api.deps import get_file_access_user, require_admin
-from app.api.schemas import FileOut
-from app.db.models import Document, Role, User
-from app.db.session import get_session
-from app.services import document_service, file_service
+from app.documentos_oficiales.api.deps import get_file_access_user, require_admin
+from app.documentos_oficiales.api.schemas import FileOut
+from app.documentos_oficiales.db.models import Document, Role, User
+from app.documentos_oficiales.db.session import get_session
+from app.documentos_oficiales.services import document_service, file_service
 
 router = APIRouter(tags=["files"])
 

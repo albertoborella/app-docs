@@ -7,9 +7,9 @@ from collections.abc import Callable
 
 import flet as ft
 
-from app.api.schemas import DocumentOut
-from app.ui.api_client import ApiClient, ApiError, AuthError
-from app.ui.theme import theme_toggle_button
+from app.documentos_oficiales.api.schemas import DocumentOut
+from app.documentos_oficiales.ui.api_client import ApiClient, ApiError, AuthError
+from app.documentos_oficiales.ui.theme import theme_toggle_button
 
 TITLE = "Papelera de reciclaje"
 EMPTY_MESSAGE = "No hay documentos retirados."

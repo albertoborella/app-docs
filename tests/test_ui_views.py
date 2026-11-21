@@ -6,23 +6,23 @@ from unittest.mock import AsyncMock, MagicMock
 import flet as ft
 import pytest
 
-from app.api.schemas import DocumentOut, UserOut
-from app.db.models import Role
-from app.ui.api_client import ApiError, AuthError, NotFoundError
-from app.ui.theme import (
+from app.documentos_oficiales.api.schemas import DocumentOut, UserOut
+from app.documentos_oficiales.db.models import Role
+from app.documentos_oficiales.ui.api_client import ApiError, AuthError, NotFoundError
+from app.documentos_oficiales.ui.theme import (
     THEME_TOGGLE_TOOLTIP,
     next_theme_mode,
     restore_theme_mode,
     theme_toggle_button,
 )
-from app.ui.views.catalog import (
+from app.documentos_oficiales.ui.views.catalog import (
     FILTER_DEBOUNCE_SECONDS,
     MOBILE_BREAKPOINT_PX,
     OPEN_NOTICE_MESSAGE,
     CatalogView,
     CatalogViewModel,
 )
-from app.ui.views.sign_in import SignInView, SignInViewModel
+from app.documentos_oficiales.ui.views.sign_in import SignInView, SignInViewModel
 
 BOOTSTRAP_HINT = "python -m app.cli create-admin"
 
@@ -241,7 +241,7 @@ def test_catalog_filter_fields_have_on_change_wired():
 
 def test_catalog_filter_change_debounces_and_search_applies_immediately(monkeypatch):
     assert FILTER_DEBOUNCE_SECONDS == 0.3  # exported debounce contract
-    monkeypatch.setattr("app.ui.views.catalog.FILTER_DEBOUNCE_SECONDS", 0)
+    monkeypatch.setattr("app.documentos_oficiales.ui.views.catalog.FILTER_DEBOUNCE_SECONDS", 0)
     client = MagicMock()
     client.list_documents.return_value = []
     catalog = CatalogView(client, on_sign_out=lambda: None, file_picker=ft.FilePicker())
@@ -357,7 +357,7 @@ def test_web_mode_row_button_opens_url_in_new_tab(monkeypatch):
             captured["url"] = url
             captured["target"] = target
 
-    monkeypatch.setattr("app.ui.views.catalog.ft.OpenUrl", _StubOpenUrl)
+    monkeypatch.setattr("app.documentos_oficiales.ui.views.catalog.ft.OpenUrl", _StubOpenUrl)
     client = MagicMock()
     client.base_url = "http://192.168.0.83:8550"
     client.public_base_url = "http://192.168.0.83:8550"

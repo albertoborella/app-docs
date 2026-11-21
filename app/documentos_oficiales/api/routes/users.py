@@ -3,11 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from app.api.deps import require_admin
-from app.api.schemas import UserCreate, UserOut, UserPatch
-from app.db.models import User
-from app.db.session import get_session
-from app.services import user_service
+from app.documentos_oficiales.api.deps import require_admin
+from app.documentos_oficiales.api.schemas import UserCreate, UserOut, UserPatch
+from app.documentos_oficiales.db.models import User
+from app.documentos_oficiales.db.session import get_session
+from app.documentos_oficiales.services import user_service
 
 router = APIRouter(tags=["users"])
 

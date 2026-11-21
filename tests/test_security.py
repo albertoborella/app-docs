@@ -2,7 +2,7 @@ import base64
 import hashlib
 from datetime import datetime, timedelta, timezone
 
-from app.core import security
+from app.documentos_oficiales.core import security
 
 
 def test_hash_password_is_bcrypt_not_plaintext():

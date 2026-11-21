@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.db.models import Role
+from app.documentos_oficiales.db.models import Role
 
 
 class LoginRequest(BaseModel):

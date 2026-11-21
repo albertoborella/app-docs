@@ -3,11 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
-from app.api.deps import get_current_user, require_admin
-from app.api.schemas import DocumentCreate, DocumentOut, DocumentPatch
-from app.db.models import Role, User
-from app.db.session import get_session
-from app.services import document_service
+from app.documentos_oficiales.api.deps import get_current_user, require_admin
+from app.documentos_oficiales.api.schemas import DocumentCreate, DocumentOut, DocumentPatch
+from app.documentos_oficiales.db.models import Role, User
+from app.documentos_oficiales.db.session import get_session
+from app.documentos_oficiales.services import document_service
 
 router = APIRouter(tags=["documents"])
 

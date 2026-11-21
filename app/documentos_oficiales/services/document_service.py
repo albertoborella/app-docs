@@ -6,8 +6,8 @@ from datetime import date
 
 from sqlmodel import Session, select
 
-from app.core.security import utc_now
-from app.db.models import Document
+from app.documentos_oficiales.core.security import utc_now
+from app.documentos_oficiales.db.models import Document
 
 _ALPHANUM_SPLIT = re.compile(r"(\d+)")
 

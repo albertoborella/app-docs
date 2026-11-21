@@ -6,10 +6,15 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, select
 
-from app.core.config import get_settings
-from app.core.security import create_session_token, hash_password, hash_token, utc_now
-from app.db.models import Role, User, UserSession
-from app.db.session import create_db_engine
+from app.documentos_oficiales.core.config import get_settings
+from app.documentos_oficiales.core.security import (
+    create_session_token,
+    hash_password,
+    hash_token,
+    utc_now,
+)
+from app.documentos_oficiales.db.models import Role, User, UserSession
+from app.documentos_oficiales.db.session import create_db_engine
 from app.main import app
 
 

@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlmodel import Session
 
-from app.api.deps import bearer_scheme, get_current_user
-from app.api.schemas import LoginRequest, TokenResponse, UserOut
-from app.db.models import User
-from app.db.session import get_session
-from app.services import auth_service
+from app.documentos_oficiales.api.deps import bearer_scheme, get_current_user
+from app.documentos_oficiales.api.schemas import LoginRequest, TokenResponse, UserOut
+from app.documentos_oficiales.db.models import User
+from app.documentos_oficiales.db.session import get_session
+from app.documentos_oficiales.services import auth_service
 
 router = APIRouter(tags=["auth"])
 

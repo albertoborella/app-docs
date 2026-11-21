@@ -8,9 +8,9 @@ from datetime import date
 
 import flet as ft
 
-from app.api.schemas import DocumentOut, FileOut
-from app.ui.api_client import ApiClient, ApiError, AuthError
-from app.ui.theme import theme_toggle_button
+from app.documentos_oficiales.api.schemas import DocumentOut, FileOut
+from app.documentos_oficiales.ui.api_client import ApiClient, ApiError, AuthError
+from app.documentos_oficiales.ui.theme import theme_toggle_button
 
 CREATE_TITLE = "Nuevo documento"
 EDIT_TITLE = "Editar documento"

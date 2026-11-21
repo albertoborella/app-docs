@@ -6,10 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, select
 
-from app.core.config import get_settings
-from app.core.security import hash_password, utc_now
-from app.db.models import Document, DocumentFile, Role, User
-from app.db.session import create_db_engine
+from app.documentos_oficiales.core.config import get_settings
+from app.documentos_oficiales.core.security import hash_password, utc_now
+from app.documentos_oficiales.db.models import Document, DocumentFile, Role, User
+from app.documentos_oficiales.db.session import create_db_engine
 from app.main import app
 
 PDF_BYTES = b"%PDF-1.4 fake binary content \x00\x01\x02"

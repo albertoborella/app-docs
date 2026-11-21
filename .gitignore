@@ -5,7 +5,7 @@
 
 # ── Runtime data — NUNCA se versiona ────────────────────────────────────────
 # SQLite database and its WAL/SHM sidecars, plus uploaded document binaries.
-# Defaults live in app/core/config.py (DOCMANAGER_DB_PATH, DOCMANAGER_STORAGE_DIR).
+# Defaults live in app/documentos_oficiales/core/config.py (DOCMANAGER_DB_PATH, DOCMANAGER_STORAGE_DIR).
 var/
 
 # Safety net in case the DB path is pointed somewhere outside var/.

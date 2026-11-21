@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel
 
-from app.core.security import hash_password, utc_now
-from app.db.migrations import ensure_document_columns
-from app.db.models import Role, User
-from app.db.session import create_db_engine
+from app.documentos_oficiales.core.security import hash_password, utc_now
+from app.documentos_oficiales.db.migrations import ensure_document_columns
+from app.documentos_oficiales.db.models import Role, User
+from app.documentos_oficiales.db.session import create_db_engine
 from app.main import app
 
 OLD_DOCUMENTS_TABLE = """

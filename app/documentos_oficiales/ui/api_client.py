@@ -14,8 +14,8 @@ from typing import Any
 
 import httpx
 
-from app.api.schemas import DocumentOut, FileOut, UserOut
-from app.db.models import Role
+from app.documentos_oficiales.api.schemas import DocumentOut, FileOut, UserOut
+from app.documentos_oficiales.db.models import Role
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from app.core.config import get_settings
+from app.documentos_oficiales.core.config import get_settings
 
 
 def create_db_engine(db_path: Path | str) -> Engine:

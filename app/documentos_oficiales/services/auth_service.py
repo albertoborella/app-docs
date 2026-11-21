@@ -2,15 +2,15 @@
 
 from sqlmodel import Session, select
 
-from app.core.config import get_settings
-from app.core.security import (
+from app.documentos_oficiales.core.config import get_settings
+from app.documentos_oficiales.core.security import (
     create_session_token,
     hash_token,
     is_token_expired,
     utc_now,
     verify_password,
 )
-from app.db.models import User, UserSession
+from app.documentos_oficiales.db.models import User, UserSession
 
 
 def authenticate(db: Session, *, username: str, password: str) -> User | None:

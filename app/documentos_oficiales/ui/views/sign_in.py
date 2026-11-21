@@ -7,8 +7,8 @@ from collections.abc import Callable
 
 import flet as ft
 
-from app.api.schemas import UserOut
-from app.ui.api_client import ApiClient, ApiError, AuthError
+from app.documentos_oficiales.api.schemas import UserOut
+from app.documentos_oficiales.ui.api_client import ApiClient, ApiError, AuthError
 
 BOOTSTRAP_HINT = (
     "Si es una instalación nueva y aún no existe un administrador, "

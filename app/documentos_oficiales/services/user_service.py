@@ -2,8 +2,8 @@
 
 from sqlmodel import Session, select
 
-from app.core.security import hash_password, utc_now
-from app.db.models import Role, User
+from app.documentos_oficiales.core.security import hash_password, utc_now
+from app.documentos_oficiales.db.models import Role, User
 
 
 class DuplicateUsernameError(ValueError):

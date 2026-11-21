@@ -6,8 +6,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from app.db.models import Role
-from app.ui.api_client import ApiClient, ApiError, AuthError, NotFoundError
+from app.documentos_oficiales.db.models import Role
+from app.documentos_oficiales.ui.api_client import ApiClient, ApiError, AuthError, NotFoundError
 
 BASE_URL = "http://testserver"
 
