@@ -45,6 +45,6 @@ Cómo se identifica quién usa el sistema y qué puede hacer. Requisitos de cond
 
 ## Detalles de implementación (referencia)
 
-- Dependency `get_current_user` y `require_admin` definidas en `app/api/deps.py` con firmas PEP 604 (`X | None`).
-- Hash de contraseña y mint/verificación de token en `app/core/security.py`.
+- Dependency `get_current_user` y `require_admin` definidas en `app/documentos_oficiales/api/deps.py` con firmas PEP 604 (`X | None`).
+- Hash de contraseña y mint/verificación de token en `app/documentos_oficiales/core/security.py`.
 - Sin rutas de registro propio: `create-admin` por CLI es la única vía de creación de administradores en una instalación nueva.

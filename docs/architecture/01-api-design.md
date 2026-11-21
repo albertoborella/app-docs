@@ -30,7 +30,7 @@ Superficie HTTP del backend (`/api/v1`) y contratos del cliente usado por la UI.
 | 413 | Archivo excede el límite de tamaño |
 | 415 | Tipo de archivo fuera de la lista de permitidos |
 
-## Contratos del cliente de UI (`app/ui/api_client.py`)
+## Contratos del cliente de UI (`app/documentos_oficiales/ui/api_client.py`)
 
 Un único cliente (httpx + *bearer*) para los tres objetivos (ADR-003):
 
@@ -48,7 +48,7 @@ class ApiClient:
     def download_file(self, document_id: int) -> bytes
 ```
 
-## Contratos de dependencias (`app/api/deps.py`)
+## Contratos de dependencias (`app/documentos_oficiales/api/deps.py`)
 
 ```python
 def get_current_user(token: str = Depends(bearer_scheme), db: Session = Depends(get_db)) -> User

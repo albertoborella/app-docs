@@ -35,14 +35,14 @@ Un solo proceso Python: la API REST es la fuente de verdad en todos los objetivo
 | `pyproject.toml` | Dependencias pineadas: fastapi, uvicorn, sqlmodel, flet (+ `flet.fastapi`), httpx, bcrypt; pytest, ruff |
 | `app/main.py` | Factoría de la app; routers; montaje de `flet.fastapi`; `create_all` |
 | `app/cli.py` | `argparse` + `getpass`; comando `create-admin` (bootstrap del primer administrador, ADR-007) |
-| `app/core/config.py` | Ajustes por variables de entorno (directorio de almacenamiento, TTL de sesión) |
-| `app/core/security.py` | Hash/verificación de contraseñas; emisión/verificación de tokens |
-| `app/db/session.py` | Motor SQLite (WAL, claves foráneas activas) |
-| `app/db/models.py` | Modelos de tablas (Role, User, UserSession, Document, DocumentFile) |
-| `app/services/*.py` | Reglas de dominio (`auth`, `user`, `document`, `file`) |
-| `app/api/deps.py` | `get_current_user`, `require_admin` |
-| `app/api/routes/*.py` | Superficie HTTP: `auth`, `users`, `documents`, `files` |
-| `app/ui/**` | Vistas Flet + `api_client.py`; el copy en español neutro vive **solo** aquí |
+| `app/documentos_oficiales/core/config.py` | Ajustes por variables de entorno (directorio de almacenamiento, TTL de sesión) |
+| `app/documentos_oficiales/core/security.py` | Hash/verificación de contraseñas; emisión/verificación de tokens |
+| `app/documentos_oficiales/db/session.py` | Motor SQLite (WAL, claves foráneas activas) |
+| `app/documentos_oficiales/db/models.py` | Modelos de tablas (Role, User, UserSession, Document, DocumentFile) |
+| `app/documentos_oficiales/services/*.py` | Reglas de dominio (`auth`, `user`, `document`, `file`) |
+| `app/documentos_oficiales/api/deps.py` | `get_current_user`, `require_admin` |
+| `app/documentos_oficiales/api/routes/*.py` | Superficie HTTP: `auth`, `users`, `documents`, `files` |
+| `app/documentos_oficiales/ui/**` | Vistas Flet + `api_client.py`; el copy en español neutro vive **solo** aquí |
 | `tests/` | Unidad (servicios/seguridad), integración (API + SQLite temporal + almacenamiento temporal), contrato del cliente de UI |
 | `var/storage/` | Binarios en runtime, ignorados por git |
 
@@ -52,7 +52,7 @@ Un solo proceso Python: la API REST es la fuente de verdad en todos los objetivo
 | --- | --- |
 | `uvicorn app.main:app` | Web + API (un solo proceso) |
 | `python -m app.cli create-admin` | Bootstrap del primer administrador en una instalación fresca |
-| `flet run app/ui` | Escritorio (con `DOCMANAGER_API_URL` configurada) |
+| `flet run app/documentos_oficiales/ui` | Escritorio (con `DOCMANAGER_API_URL` configurada) |
 | `flet build` | Mismo entry point de UI compilado a móvil (APK/IPA) |
 
 ## Propiedades estructurales

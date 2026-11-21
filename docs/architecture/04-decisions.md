@@ -11,6 +11,7 @@ Registro de las decisiones de arquitectura del proyecto. Cada decisión vive com
 | [ADR-005](../decisions/ADR-005-borrado-suave.md) | Borrado suave mediante `deleted_at`; sin hard delete en v1 | Vigente |
 | [ADR-006](../decisions/ADR-006-multiples-administradores.md) | Se permiten múltiples cuentas de administrador | Vigente (multi-administrador: `CONFIRMADO`; restricción futura sería aditiva) |
 | [ADR-007](../decisions/ADR-007-primer-admin-cli.md) | Bootstrap del primer administrador por comando de terminal `create-admin` (patrón Django) | Vigente |
+| [ADR-008](../decisions/ADR-008-modulo-documentos-oficiales.md) | Código funcional en el módulo `app/documentos_oficiales/`; entry points en la raíz de `app/` | Vigente |
 
 ## Cómo leer este índice
 

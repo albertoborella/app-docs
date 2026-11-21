@@ -1,13 +1,13 @@
 # Visión general de la interfaz
 
-Experiencia de usuario del Gestor de documentación oficial láctea. La UI se escribe una sola vez en **Flet** y corre en tres objetivos (ADR-001); todo el copy visible está en **español neutro** y vive únicamente en `app/ui/**` (FR-06).
+Experiencia de usuario del Gestor de documentación oficial láctea. La UI se escribe una sola vez en **Flet** y corre en tres objetivos (ADR-001); todo el copy visible está en **español neutro** y vive únicamente en `app/documentos_oficiales/ui/**` (FR-06).
 
 ## Principios
 
 | Principio | Detalle | Fuente |
 | --- | --- | --- |
 | Español neutro en cada pantalla | Etiquetas, acciones y mensajes en español; sin excepciones por objetivo | spec `document-management` |
-| Un solo camino de datos | Toda vista habla con la API mediante `app/ui/api_client.py` (httpx + *bearer*), también en web | ADR-003 |
+| Un solo camino de datos | Toda vista habla con la API mediante `app/documentos_oficiales/ui/api_client.py` (httpx + *bearer*), también en web | ADR-003 |
 | Dos mundos de permiso | El usuario normal ve catálogo; el administrador ve además las vistas de administración | spec, ADR-005 |
 | Cero estados anónimos | Sin sesión no hay catálogo: la primera pantalla siempre es el inicio de sesión | spec `user-account-management` |
 
@@ -15,7 +15,7 @@ Experiencia de usuario del Gestor de documentación oficial láctea. La UI se es
 
 | Aspecto | Web | Escritorio | Móvil |
 | --- | --- | --- | --- |
-| Cómo corre | Montada en FastAPI (`/flet-app`) | `flet run app/ui` | `flet build` (APK/IPA) |
+| Cómo corre | Montada en FastAPI (`/flet-app`) | `flet run app/documentos_oficiales/ui` | `flet build` (APK/IPA) |
 | Selección de archivo (subida) | Archivo temporal vía `/upload` de `flet.fastapi` | Ruta local del archivo | Ruta local del archivo |
 | Descarga | Descarga del navegador | Diálogo de guardado | Diálogo de guardado |
 | URL de API | Loopback (mismo proceso) | `DOCMANAGER_API_URL` | `DOCMANAGER_API_URL` (HTTPS) |
@@ -38,4 +38,4 @@ Experiencia de usuario del Gestor de documentación oficial láctea. La UI se es
 
 ## Copy
 
-El copy en español neutro se concentra en `app/ui/**` (el backend y las specs permanecen en inglés). No existe capa de internacionalización (i18n) en v1: un solo idioma por requisito.
+El copy en español neutro se concentra en `app/documentos_oficiales/ui/**` (el backend y las specs permanecen en inglés). No existe capa de internacionalización (i18n) en v1: un solo idioma por requisito.

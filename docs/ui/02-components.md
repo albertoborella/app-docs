@@ -6,7 +6,7 @@ Piezas reutilizables de la UI Flet comprometidas por el diseño. El catálogo co
 
 | Pieza | Detalle |
 | --- | --- |
-| `app/ui/api_client.py` (`ApiClient`) | Cliente httpx con *bearer*; único camino de datos de los tres objetivos (ADR-003). Opera: `login`, `list_documents` (con filtros), `upload_file`, `download_file`. Se prueba con httpx simulado (contrato). |
+| `app/documentos_oficiales/ui/api_client.py` (`ApiClient`) | Cliente httpx con *bearer*; único camino de datos de los tres objetivos (ADR-003). Opera: `login`, `list_documents` (con filtros), `upload_file`, `download_file`. Se prueba con httpx simulado (contrato). |
 
 ## Controles y widgets
 
@@ -30,4 +30,4 @@ Definidos en el plan de tareas (fases 5 y 6); el detalle visual se implementa ju
 
 ## Convención de copy
 
-Todo texto visible de estas piezas vive en `app/ui/**` y está en español neutro; no se externaliza a i18n en v1. Si una pieza cambia, su documentación se actualiza en el mismo cambio (regla del andamiaje de `docs/`).
+Todo texto visible de estas piezas vive en `app/documentos_oficiales/ui/**` y está en español neutro; no se externaliza a i18n en v1. Si una pieza cambia, su documentación se actualiza en el mismo cambio (regla del andamiaje de `docs/`).

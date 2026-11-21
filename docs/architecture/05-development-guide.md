@@ -29,7 +29,7 @@ El script arranca el server combinado (API + UI Flet montada en el mismo puerto,
 Dos procesos (API y UI separadas) para que al guardar un `.py` se recargue solo:
 
 1. Terminal 1 — backend: `uv run uvicorn app.main:app --reload`
-2. Terminal 2 — frontend: `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui`
+2. Terminal 2 — frontend: `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui`
 3. Abrí Swagger UI: http://127.0.0.1:8000/docs
 
 El detalle de los modos de Flet (escritorio, web, celular en la misma Wi-Fi) está en *Frontend (Flet)* más abajo.
@@ -206,13 +206,13 @@ El frontend es una app Flet 1.0.4 (desktop o browser) que consume la API con el 
 
 Todo lo que sigue se entiende con este esquema:
 
-- **En desarrollo hay dos procesos**: el **API** (uvicorn, puerto 8000) y la **UI** (Flet). No existen tres apps: la UI es el mismo código (`app/ui`) corriendo en dos modos — *escritorio* (ventana nativa) o *web* (la notebook la sirve como sitio web, puerto 8550). (En modo demo, en cambio, un solo proceso sirve API y UI juntas — ver *Modo demo*.)
+- **En desarrollo hay dos procesos**: el **API** (uvicorn, puerto 8000) y la **UI** (Flet). No existen tres apps: la UI es el mismo código (`app/documentos_oficiales/ui`) corriendo en dos modos — *escritorio* (ventana nativa) o *web* (la notebook la sirve como sitio web, puerto 8550). (En modo demo, en cambio, un solo proceso sirve API y UI juntas — ver *Modo demo*.)
 - **El API y la UI corren en la notebook.** El celular (u otra computadora) **nunca corre Python**: solo abre un navegador apuntado al sitio web que sirve la notebook. Por eso desde cualquier dispositivo ves la misma app, con la misma base y el mismo inicio de sesión.
 - **Tres formas de entrar**, todas contra el mismo API:
 
 | Desde dónde entrás | Comando / URL | Modo |
 | --- | --- | --- |
-| Ventana nativa en la notebook | `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` | escritorio |
+| Ventana nativa en la notebook | `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui` | escritorio |
 | Navegador de la notebook | `http://localhost:8550` (con la UI en `--web`) | web |
 | Navegador del celular, misma Wi-Fi | `http://<IP-de-la-notebook>:8550` (con la UI en `--web`) | web |
 
@@ -221,7 +221,7 @@ En escritorio el botón de cada fila es "Descargar" (diálogo de guardado); en w
 ### Camino rápido
 
 1. Terminal 1 — backend: `uv run uvicorn app.main:app --reload`
-2. Terminal 2 — frontend (desde la raíz del proyecto): `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui`
+2. Terminal 2 — frontend (desde la raíz del proyecto): `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui`
 3. Se abre la ventana de escritorio (o una pestaña del browser con `--web`, ver abajo) en la pantalla de inicio de sesión. Usá el administrador creado con `create-admin`.
 
 `DOCMANAGER_API_URL` no hace falta definirla en local: el `ApiClient` ya apunta por defecto a `http://127.0.0.1:8000`.
@@ -230,30 +230,30 @@ En escritorio el botón de cada fila es "Descargar" (diálogo de guardado); en w
 
 | Comando | Qué hace |
 | --- | --- |
-| `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` | Escritorio, con *hot reload* recursivo (recompila al guardar cambios en `app/ui/` y subdirectorios) |
-| `uv run flet run -r -w --ignore-dirs .flet,__pycache__,views/__pycache__ --host "*" -p 8550 app/ui` | Sirve la misma app en el browser (abre una pestaña sola); útil si no querés ventana nativa |
-| `uv run flet run -r -n --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` | Escritorio con la ventana arrancando oculta (`-n` / `--hidden`) |
+| `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui` | Escritorio, con *hot reload* recursivo (recompila al guardar cambios en `app/documentos_oficiales/ui/` y subdirectorios) |
+| `uv run flet run -r -w --ignore-dirs .flet,__pycache__,views/__pycache__ --host "*" -p 8550 app/documentos_oficiales/ui` | Sirve la misma app en el browser (abre una pestaña sola); útil si no querés ventana nativa |
+| `uv run flet run -r -n --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui` | Escritorio con la ventana arrancando oculta (`-n` / `--hidden`) |
 
-El flag `-r` (`--recursive`) es importante: las vistas viven en `app/ui/views/`, y sin `-r` el watcher no las observa. **`--ignore-dirs` también es obligatorio en desarrollo**: los directorios listados son escritura de runtime de Flet (no de tu código); sin ellos, el propio arranque de una sesión reinicia el servidor (ver gotcha siguiente).
+El flag `-r` (`--recursive`) es importante: las vistas viven en `app/documentos_oficiales/ui/views/`, y sin `-r` el watcher no las observa. **`--ignore-dirs` también es obligatorio en desarrollo**: los directorios listados son escritura de runtime de Flet (no de tu código); sin ellos, el propio arranque de una sesión reinicia el servidor (ver gotcha siguiente).
 
 ### Gotchas verificados (Flet 1.0.4)
 
 - **`uv sync` puede remover `flet-cli`** del venv (no está en `pyproject.toml`). No rompas la cabeza: el siguiente `uv run flet ...` lo reinstala solo. Siempre usá `uv run flet ...`, nunca `flet ...` a secas.
-- Flet 1.0 eliminó `ft.app`: el entry point (`app/ui/main.py`) usa `ft.run(main)`.
+- Flet 1.0 eliminó `ft.app`: el entry point (`app/documentos_oficiales/ui/main.py`) usa `ft.run(main)`.
 - `FilePicker` en Flet 1.0.4 es un **Service auto-registrado**: con construirlo dentro de `main()` alcanza (`context.page` ya está seteado). **No va en `page.overlay`** — ahí el renderer lo recibe como control visible y muestra un placeholder "Unknown control: FilePicker".
 - El `SnackBar` pasa por `page.show_dialog(ft.SnackBar(...))`, no `page.open` (pre-1.0).
 - El 401 de login no distingue contraseña incorrecta de instalación sin administrador: el hint de `create-admin` aparece ante cualquier error de autenticación.
-- **La ventana de Flet puede abrir DETRÁS del browser maximizado.** Si ves solo el logo de Flet o sentís que "no abre la pantalla de login", mirá la barra de tareas por la ventana **"Gestor documentario lácteo"** y traela al frente (alt+tab o clic en el ícono). Una corrida interrumpida (Ctrl+C, cerrar la terminal) puede dejar además un hijo huérfano `python -u app/ui/main.py` y una ventana vieja clavada en el logo: `pkill -f "app/ui/main.py"`, cerrá esa ventana y reintentá.
+- **La ventana de Flet puede abrir DETRÁS del browser maximizado.** Si ves solo el logo de Flet o sentís que "no abre la pantalla de login", mirá la barra de tareas por la ventana **"Gestor documentario lácteo"** y traela al frente (alt+tab o clic en el ícono). Una corrida interrumpida (Ctrl+C, cerrar la terminal) puede dejar además un hijo huérfano `python -u app/documentos_oficiales/ui/main.py` y una ventana vieja clavada en el logo: `pkill -f "app/documentos_oficiales/ui/main.py"`, cerrá esa ventana y reintentá.
 - **El cierre imprime ruido de Flutter, no errores de la app.** Al cerrar la ventana la terminal puede mostrar `embedder.cc (…): 'FlutterEngineRemoveView' returned 'kInvalidArguments'. Remove view info was invalid. The implicit view cannot be removed.` y dos WARNING `Attempted to set message handler on an FlBinaryMessenger without an engine`. Es el teardown del embedder GTK de Flutter en Linux; el proceso vuelve al prompt igual. Preocupate solo si ves `Segmentation fault` / `Emergency stop` o si el proceso queda colgado.
 - **Arranque sano en cinco líneas** (con `-v`): `Starting up UDS server on /tmp/<id>` → `Flet app has started...` → `Starting Flet View app...` → `Flet client found in cache: …` → `App session started`. Si no llegan las cinco, el proceso Python de la UI no arrancó: mirá el error de la terminal antes de culpar a la UI.
-- **`-r` sin `--ignore-dirs` reinicia el servidor en cada conexión (verificado).** Flet 1.0.4 apunta el runtime de la app a `app/ui/.flet/storage/` (`TMPDIR`, `FLET_APP_STORAGE_TEMP`, cwd = `…/data`) — dentro del árbol que el watcher observa. En modo web, cada pestaña que conecta escribe `index.html`/`manifest.json` bajo `.flet/storage/temp/tmp*/`; el watcher lo toma como cambio de código y **reinicia el proceso**, la pestaña pierde el WebSocket y vuelve al logo centrado de Flet… que al reconectar repite el ciclo: la página nunca termina de cargar. En escritorio, elegir un archivo con el `FilePicker` hace lo mismo. Solución: siempre `--ignore-dirs .flet,__pycache__,views/__pycache__` (el filtro es por ruta, por eso hay que listar `views/__pycache__` aparte). Con eso, el hot reload de `*.py` sigue funcionando y las conexiones ya no reinician nada — verificado midiendo el PID del hijo antes/después de un `GET /` + handshake WebSocket: sin el flag, dos reinicios; con él, PID estable.
+- **`-r` sin `--ignore-dirs` reinicia el servidor en cada conexión (verificado).** Flet 1.0.4 apunta el runtime de la app a `app/documentos_oficiales/ui/.flet/storage/` (`TMPDIR`, `FLET_APP_STORAGE_TEMP`, cwd = `…/data`) — dentro del árbol que el watcher observa. En modo web, cada pestaña que conecta escribe `index.html`/`manifest.json` bajo `.flet/storage/temp/tmp*/`; el watcher lo toma como cambio de código y **reinicia el proceso**, la pestaña pierde el WebSocket y vuelve al logo centrado de Flet… que al reconectar repite el ciclo: la página nunca termina de cargar. En escritorio, elegir un archivo con el `FilePicker` hace lo mismo. Solución: siempre `--ignore-dirs .flet,__pycache__,views/__pycache__` (el filtro es por ruta, por eso hay que listar `views/__pycache__` aparte). Con eso, el hot reload de `*.py` sigue funcionando y las conexiones ya no reinician nada — verificado midiendo el PID del hijo antes/después de un `GET /` + handshake WebSocket: sin el flag, dos reinicios; con él, PID estable.
 - **Si la pestaña web quedó colgada en el logo**, no alcanza con recargar: el servidor puede haber quedado sin listener (el CLI sigue vivo pero el puerto 8550 ya no escucha). Cerrá la corrida con Ctrl+C y volvé a arrancar con el comando de arriba; recién ahí hacé un reload duro de la pestaña (Ctrl+Shift+R).
 
 ### Ajustar colores y tema
 
 Los puntos de customización, de global a puntual:
 
-1. **Tema general** — `app/ui/main.py`, función `main()`: hoy está `page.theme_mode = ft.ThemeMode.SYSTEM` (sigue el sistema). Cambialo a `ft.ThemeMode.LIGHT` o `ft.ThemeMode.DARK` para forzar.
+1. **Tema general** — `app/documentos_oficiales/ui/main.py`, función `main()`: hoy está `page.theme_mode = ft.ThemeMode.SYSTEM` (sigue el sistema). Cambialo a `ft.ThemeMode.LIGHT` o `ft.ThemeMode.DARK` para forzar.
 2. **Paleta de la app** — en la misma función, agregá un esquema de color Material 3 sobre la página:
 
    ```python
@@ -269,15 +269,15 @@ Los puntos de customización, de global a puntual:
    ```
 
    Los campos aceptados de `ft.ColorScheme` (verificados contra el paquete instalado) incluyen `primary`, `on_primary`, `secondary`, `error`, `surface`, `on_surface`, `outline`, y todo el resto de la paleta MD3. Los valores son los de `ft.Colors.*` (`INDIGO`, `TEAL`, `RED`, `ORANGE`, `GREEN`, `AMBER`, `DEEP_PURPLE`, …) o strings hexadecimales.
-3. **Colores puntuales por control** — las vistas usan `ft.Colors.ERROR`, `ft.Colors.ON_SURFACE_VARIANT`, etc. directamente sobre `ft.Text` (por ejemplo el texto de error en `app/ui/views/sign_in.py`). Para un color custom en un control puntual: `ft.Text("...", color="#1976D2")` o `ft.Colors.with_opacity(0.7, ft.Colors.BLACK)`.
-4. **Tipografía y spacing** — los `size=`, `spacing=`, `padding=` de cada view están en `app/ui/views/sign_in.py` y `app/ui/views/catalog.py`.
+3. **Colores puntuales por control** — las vistas usan `ft.Colors.ERROR`, `ft.Colors.ON_SURFACE_VARIANT`, etc. directamente sobre `ft.Text` (por ejemplo el texto de error en `app/documentos_oficiales/ui/views/sign_in.py`). Para un color custom en un control puntual: `ft.Text("...", color="#1976D2")` o `ft.Colors.with_opacity(0.7, ft.Colors.BLACK)`.
+4. **Tipografía y spacing** — los `size=`, `spacing=`, `padding=` de cada view están en `app/documentos_oficiales/ui/views/sign_in.py` y `app/documentos_oficiales/ui/views/catalog.py`.
 
 Con el *hot reload* activo, guardás el archivo y la ventana refleja el cambio sin reiniciar la sesión de la API (la sesión se pierde solo si se reinicia el proceso Python de la UI — el token vive en memoria del `ApiClient`).
 
 ### Flujo completo de prueba (UI + backend real)
 
 1. Backend arriba (terminal 1).
-2. `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` (terminal 2).
+2. `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui` (terminal 2).
 3. Login con el administrador → catálogo (vacío al principio).
 4. Subí un documento con su PDF desde Swagger o curl (sección anterior) y refrescá el catálogo para verlo.
 5. Probá la búsqueda y la descarga desde la UI.
@@ -290,7 +290,7 @@ Para usar la UI desde el navegador del celular (en la misma Wi-Fi que la noteboo
 # terminal 1 — API alcanzable desde la red local
 uv run uvicorn app.main:app --reload --host 0.0.0.0
 # terminal 2 — UI como sitio web (la IP es la de la notebook: hostname -I)
-DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --ignore-dirs .flet,__pycache__,views/__pycache__ --host "*" -p 8550 app/ui
+DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --ignore-dirs .flet,__pycache__,views/__pycache__ --host "*" -p 8550 app/documentos_oficiales/ui
 ```
 
 - El celular, en la misma red Wi-Fi, abre `http://192.168.0.83:8550`.
@@ -305,11 +305,12 @@ DOCMANAGER_API_URL=http://192.168.0.83:8000 uv run flet run -r -w --ignore-dirs 
 - [ ] `uvicorn responde en http://127.0.0.1:8000/docs`
 - [ ] `POST /auth/login` devuelve un token
 - [ ] `GET /auth/me` con `Authorization: Bearer $TOKEN` devuelve el usuario
-- [ ] `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/ui` abre la pantalla de inicio de sesión
+- [ ] `uv run flet run -r --ignore-dirs .flet,__pycache__,views/__pycache__ app/documentos_oficiales/ui` abre la pantalla de inicio de sesión
 - [ ] Login con el administrador llega al catálogo
 - [ ] (Modo demo) `./demo-up.sh` imprime un link `https://…trycloudflare.com` y ese link abre la pantalla de login desde el celular
 
-## Documentos relacionados
+## Documentos relacionadosclear
+
 
 - `01-api-design.md` — contratos HTTP y códigos de error.
 - `03-deployment.md` — estrategia de despliegue por objetivo.

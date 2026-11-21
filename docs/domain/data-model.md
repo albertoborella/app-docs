@@ -6,7 +6,7 @@ Esquema físico en SQLite, derivado del modelo SQLModel del diseño (`design.md`
 
 - Motor: **SQLite en modo WAL**, con `foreign_keys=ON` (ver `../architecture/00-architecture.md`).
 - Tipos: SQLModel sobre Python ≥ 3.10; opcionalidad con PEP 604 (`str | None`), nunca `Optional`.
-- Sin framework de migraciones en v1: evolución por `ALTER` aditivos hasta que un cambio justifique Alembic. Las columnas opcionales nuevas de `documents` (`country`, `topic`) se añaden a bases existentes con `app/db/migrations.py` (`ensure_document_columns`, idempotente), invocado por el CLI `create-admin`.
+- Sin framework de migraciones en v1: evolución por `ALTER` aditivos hasta que un cambio justifique Alembic. Las columnas opcionales nuevas de `documents` (`country`, `topic`) se añaden a bases existentes con `app/documentos_oficiales/db/migrations.py` (`ensure_document_columns`, idempotente), invocado por el CLI `create-admin`.
 - Los binarios **no** viven en la base: solo sus metadatos en `document_files`; los archivos en `$DOCMANAGER_STORAGE_DIR/documents/{document_id}/file`.
 
 ## Tablas y columnas

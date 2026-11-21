@@ -7,7 +7,7 @@ Cómo se arranca y distribuye el sistema por objetivo. El **destino de despliegu
 | | Web | Escritorio | Móvil |
 | --- | --- | --- | --- |
 | Desplegables | 1 proceso (`uvicorn app.main:app`) | App Flet + API alcanzable | App Flet (APK/IPA) + API alcanzable |
-| UI | Montada en FastAPI bajo `/flet-app` (incluye `/ws` y `/upload`) | `flet run app/ui` o ejecutable empaquetado | `flet build` con el mismo entry point |
+| UI | Montada en FastAPI bajo `/flet-app` (incluye `/ws` y `/upload`) | `flet run app/documentos_oficiales/ui` o ejecutable empaquetado | `flet build` con el mismo entry point |
 | URL de la API | Loopback, mismo proceso | `DOCMANAGER_API_URL` | `DOCMANAGER_API_URL` (HTTPS) |
 
 Restricción operativa fija: **un solo trabajador uvicorn** — SQLite tiene un único escritor (NFR-11).
@@ -19,7 +19,7 @@ Restricción operativa fija: **un solo trabajador uvicorn** — SQLite tiene un 
 | `DOCMANAGER_STORAGE_DIR` | Directorio de binarios | `./var/storage` |
 | `DOCMANAGER_API_URL` | URL de la API para escritorio/móvil | requerida en esos objetivos |
 
-Los ajustes de sesión (TTL) viven en `app/core/config.py`.
+Los ajustes de sesión (TTL) viven en `app/documentos_oficiales/core/config.py`.
 
 ## Instalación fresca
 
