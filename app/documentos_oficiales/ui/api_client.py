@@ -1,6 +1,10 @@
 """HTTP API client for the dairy document manager UI (httpx + bearer token).
 
 One client path for every deployment target (web, desktop, mobile) per design.md.
+
+Endpoints for cloro-registro module (added for Slice B):
+    POST /api/v1/registros-cloro          — crear registro
+    GET  /api/v1/registros-cloro          — listado con filtros
 """
 
 from __future__ import annotations
@@ -8,7 +12,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -226,6 +230,94 @@ class ApiClient:
         """POST /documents/{id}/restore — admin-only soft-delete undo."""
         data = self._request("POST", f"{_API_PREFIX}/documents/{document_id}/restore")
         return DocumentOut.model_validate(data)
+
+    def create_registro_cloro(
+        self,
+        *,
+        cloro_ppm: float,
+        temperatura_c: float | None = None,
+        ph: float | None = None,
+        agua_temperatura_c: float | None = None,
+        notes: str | None = None,
+    ) -> dict:
+        """POST /api/v1/registros-cloro — crear nuevo registro de cloro.
+
+        El client auto-llena el timestamp con datetime.utcnow().
+        """
+        payload: dict[str, Any] = {
+            "cloro_ppm": cloro_ppm,
+            "temperatura_c": temperatura_c,
+            "ph": ph,
+            "agua_temperatura_c": agua_temperatura_c,
+            "notes": notes,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        data = self._request(
+            "POST",
+            f"{_API_PREFIX}/registros-cloro",
+            json=payload,
+            authenticated=True,
+        )
+        return data
+
+    def listar_registros_cloro(
+        self,
+        *,
+        fecha_desde: str | None = None,
+        fecha_hasta: str | None = None,
+        usuario_id: int | None = None,
+        estado: str | None = None,
+        cloro_min: float | None = None,
+        cloro_max: float | None = None,
+    ) -> list[dict]:
+        """GET /api/v1/registros-cloro — listado con filtros opcionales.
+
+        Resultados ordenados descending por timestamp (más reciente primero).
+        """
+        params: dict[str, str] = {}
+        if fecha_desde is not None:
+            params["fecha_desde"] = fecha_desde
+        if fecha_hasta is not None:
+            params["fecha_hasta"] = fecha_hasta
+        if usuario_id is not None:
+            params["usuario_id"] = str(usuario_id)
+        if estado is not None:
+            params["estado"] = estado
+        if cloro_min is not None:
+            params["cloro_min"] = str(cloro_min)
+        if cloro_max is not None:
+            params["cloro_max"] = str(cloro_max)
+        data = self._request(
+            "GET",
+            f"{_API_PREFIX}/registros-cloro",
+            params=params,
+            authenticated=True,
+        )
+        return data if isinstance(data, list) else []
+
+    def upload_evidencia_cloro(
+        self,
+        registro_id: int,
+        file: "httpx.UploadedFile | bytes | None" = None,
+        filename: str | None = None,
+    ) -> dict:
+        """POST /api/v1/registros-cloro/{id}/evidencia — subir evidencia.
+
+        Valida extensión (.png/.jpg/.pdf) y tamaño <10 MB.
+        Devuelve {url: str, stored: bool}.
+        """
+        files: dict[str, tuple[str, object, str | None]] = {}
+        if file is not None and filename is not None:
+            content_type, _mimetype = mimetypes.guess_type(filename)
+            files = {"file": (filename, file, content_type or "application/octet-stream")}
+
+        data = self._request(
+            "POST",
+            f"{_API_PREFIX}/registros-cloro/{registro_id}/evidencia",
+            files=files,
+            authenticated=True,
+        )
+        return data
 
     def upload_file(self, document_id: int, local_path: str) -> FileOut:
         """PUT /documents/{id}/file — multipart upload/replace (admin)."""

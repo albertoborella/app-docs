@@ -3,6 +3,27 @@ from enum import Enum
 
 from sqlalchemy import text
 from sqlmodel import Field, Index, SQLModel
+from app.documentos_oficiales.core.security import utc_now
+
+
+class CloroRegistro(SQLModel, table=True):
+    __tablename__ = "cloro_registro"
+
+    id: int = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", index=True)
+    timestamp: datetime = Field(index=True)
+    cloro_ppm: float
+    temperatura_c: float | None = Field(default=None, nullable=True)
+    ph: float | None = Field(default=None, nullable=True)
+    agua_temperatura_c: float | None = Field(default=None, nullable=True)
+    estado: str  # "dentro_limites", "fuera_limites", "revision_necesaria"
+    evidencia_url: str | None = Field(default=None, nullable=True)
+    notes: str | None = Field(default=None, nullable=True)
+    created_at: datetime = Field(default_factory=utc_now, index=True)
+    updated_at: datetime = Field(default_factory=utc_now, index=True)
+
+    # Composite index (user_id, timestamp) is set via Field(index=True) on user_id
+    # Single index on estado is set via Field(index=True) on estado
 
 
 class Role(str, Enum):

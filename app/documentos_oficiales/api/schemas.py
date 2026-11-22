@@ -1,6 +1,6 @@
 """Shared API request/response schemas (PEP 604 only)."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -85,3 +85,45 @@ class FileOut(BaseModel):
     size_bytes: int
     sha256: str
     uploaded_at: datetime
+
+
+class CloroRegistroCreate(BaseModel):
+    user_id: int
+    cloro_ppm: float
+    timestamp: datetime = datetime.now(timezone.utc)
+    temperatura_c: float | None = None
+    ph: float | None = None
+    agua_temperatura_c: float | None = None
+    notes: str | None = None
+
+
+class CloroRegistroOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    timestamp: datetime
+    cloro_ppm: float
+    temperatura_c: float | None
+    ph: float | None
+    agua_temperatura_c: float | None
+    estado: str
+    evidencia_url: str | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CloroRegistroFilter(BaseModel):
+    fecha_desde: str | None = None  # ISO date
+    fecha_hasta: str | None = None  # ISO date
+    usuario_id: int | None = None
+    estado: str | None = None  # dentro_limites / fuera_limites / revision_necesaria
+    cloro_min: float | None = None
+    cloro_max: float | None = None
+
+
+class CloroRegistroUpdate(BaseModel):
+    estado: str | None = None
+    evidencia_url: str | None = None
+    notes: str | None = None
